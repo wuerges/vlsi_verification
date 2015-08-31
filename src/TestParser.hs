@@ -1,7 +1,12 @@
+
+
+
 import VerParser
 import Verilog
 import Graph
 import Algo
+import BDD
+
 import System.Environment
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Dot
