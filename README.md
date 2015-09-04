@@ -4,7 +4,6 @@ This project is:
 
 1. A solution to the [Problem B](http://cad-contest.el.cycu.edu.tw/problem_B/default.htm) of the ICCAD 2015 Contest.
 
-points on large designs in an effort to reduce their equivalence checking and function change problems. 
 
 2. A verilog netlist parser written in haskell with [Parsec](https://wiki.haskell.org/Parsec). It turns a verilog netlist into a graph, with all ports converted to And an Not (nand synthesis), than can be easily manipulated using [fgl](http://hackage.haskell.org/package/fgl).
 
@@ -33,8 +32,13 @@ main = do
 This is a quote from the Problem B description:
 
 > Efficient equivalence checking and functional correction on large-scale designs are crucial technologies for handling today’s demanding design cycles. Analyzing an entire design is not always practical for large-scale designs because of their size and complexity. It is well known that partitioning the design, based on two designs’ correspondence, can significantly reduce the complexity of the analysis. 
-
+> In this contest, we challenge contestants to insert cut points on large designs in an effort to reduce their equivalence checking and function change problems. 
+> 
+> [...]
+> 
 > Identifying corresponding cuts is an effective method of simplifying the equivalence checking problem caused by the Boolean complexity of large-scale designs. The corresponding cuts represent points of functional correspondence between the two designs, allowing you to partition the designs into smaller sub-problems. However, finding the equivalent correspondence can be difficult when the design has gone through ODC/SDC optimization. An algorithm that can effectively determine functional correspondence, can help improve the success of large-scale equivalence checking. 
+>
+> [...]
 
 In other words, testing circuits is not easy and we need more tools to do it.
 
