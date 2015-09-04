@@ -22,7 +22,9 @@ falses = repeat False
 
 -- | Embeds a Function in the graph.
 embedF :: Function Int -> G -> G
-embedF (Fun op os is) g = case traceShow ("embedF ", op, os, is , g)  op of
+embedF (Fun op os is) g = 
+    case op of
+    --case traceShow ("embedF ", op, os, is , g)  op of
        And  -> embedAnd is o g
        Nand -> embedNand is o g
        Or   -> embedOr is o g
@@ -33,12 +35,6 @@ embedF (Fun op os is) g = case traceShow ("embedF ", op, os, is , g)  op of
        Not  -> embedNot i os g
     where [i] = is
           [o] = os
-
--- TODO
--- or(c, a, b) = and(not c, not a, not b)
-embedXor  = error "undefined Xor"
-embedXnor = error "undefined Xnor"
-
 
 -- | Negates an Adjacency list
 negateA :: Adj Bool -> Adj Bool
@@ -78,6 +74,19 @@ embedOr is o g = embedNor is o (negateV o g)
 -- | Inserts a Nor function into the graph
 embedNor :: [Int] -> Int -> G -> G
 embedNor is o g = foldr (\i g -> insEdge (i, o, False) g) g is
+
+-- | Inserts a Xor function into the graph
+embedXor :: [Int] -> Int -> G -> G 
+embedXor [i1, i2] o g = g''
+    where [n1, n2] = newNodes 2 g
+          g'  = insNodes [(n1, ()), (n2, ())] g
+          g'' = embedOr [i1, i2] n2 
+              $ embedNand [i1, i2] n1 
+              $ embedAnd [n1, n2] o g'
+embedXor _ _ _ = error "Xor only is defined to 2 inputs"
+
+-- | Inserts a Xnor gate into the graph
+embedXnor is o g = embedXor is o (negateV o g)
 
 
 -- | Exclusive or

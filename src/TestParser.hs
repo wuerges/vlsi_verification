@@ -21,7 +21,7 @@ main = do --f <- getContents
           case p of
             Right r -> do --print "ok"
                       --print r
-                          putStrLn $ showGraph g
+                          -- putStrLn $ showGraph g
                           hPutStrLn stderr $ "// 0 " ++ show (createBDD g 0)
                           hPutStrLn stderr $ "// 1 " ++ show (createBDD g 1)
                           hPutStrLn stderr $ "// 2 " ++ show (createBDD g 2)
@@ -32,5 +32,5 @@ main = do --f <- getContents
                           hPutStrLn stderr $ "// 7 " ++ show (createBDD g 7)
                             where vi = verilogToInt r (attIndexV emptyIndex r)
                                   g = makeGraphV vi
-                                  bdd = createBDD g (read i)
+                                  bdd = bddReduce $ createBDD g (read i)
             Left l ->  error $ show l
