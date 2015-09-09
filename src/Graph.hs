@@ -4,6 +4,7 @@ import Verilog
 import Data.Graph.Inductive
 import Control.Arrow
 import Debug.Trace
+import qualified Data.Set as S
 
 -- | The graph that models the circuit after Nand Synthesis Model
 type G = Gr () Bool
@@ -108,3 +109,8 @@ fixSingleNodes g = foldr fixSingleNode g (nodes g)
 
 makeGraphV v = fixSingleNodes $ foldr embedF (embedWires v empty) (reverse $ _functions v)
 
+
+-- | Joins 2 graphs into one, merging the nodes with the same inputs.
+union :: G -> G -> G
+union g1 g2 = foldr insEdge g' (S.fromList $ labEdges g1 ++ labEdges g2)
+    where g' = foldr insNode empty (S.fromList $ labNodes g1 ++ labNodes g2)
