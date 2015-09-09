@@ -6,6 +6,8 @@ import Graph
 import Data.Graph.Inductive
 import Control.Arrow
 import Debug.Trace
+import Data.Maybe
+import qualified Data.IntMap as M
 
 -- | A bdd has a source and a graph
 data BDD = Zero | One | B BDD Int BDD
@@ -26,7 +28,7 @@ initialBDD v = B Zero v One
 -- | Creates a BDD for the given vertex
 -- | If the vertex is a source, the BDD is simple
 -- | if the vertex has many sorces, it must join all the sources
-createBDD :: G -> Int -> BDD
+createBDD :: RG -> Int -> BDD
 createBDD g n = case lpre g n of
     [] -> initialBDD n
     ps -> foldl1 bddAnd (map createBDDe ps)

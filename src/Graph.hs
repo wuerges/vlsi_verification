@@ -7,13 +7,13 @@ import Debug.Trace
 import qualified Data.Set as S
 
 -- | The graph that models the circuit after Nand Synthesis Model
---type G = Gr () Bool
-type G = Gr Int Bool
+type G = Gr () Bool
+type RG = Gr Int Bool
 
 
 -- | Creates all the nodes of the Graph
-wireNodes :: Verilog Int -> [Context Int Bool]
-wireNodes v = [([], n, n, []) | n <- names v]
+wireNodes :: Verilog Int -> [Context () Bool]
+wireNodes v = [([], n, (), []) | n <- names v]
 
 -- | Embeds all the wires in the graphs as disconnected nodes
 embedWires :: Verilog Int -> G -> G
@@ -81,7 +81,7 @@ embedNor is o g = foldr (\i g -> insEdge (i, o, False) g) g is
 embedXor :: [Int] -> Int -> G -> G 
 embedXor [i1, i2] o g = g''
     where [n1, n2] = newNodes 2 g
-          g'  = insNodes [(n1, -1), (n2, -1)] g
+          g'  = insNodes [(n1, ()), (n2, ())] g
           g'' = embedOr [i1, i2] n2 
               $ embedNand [i1, i2] n1 
               $ embedAnd [n1, n2] o g'
@@ -114,7 +114,7 @@ makeGraphV v = fixSingleNodes $ foldr embedF (embedWires v empty) (reverse $ _fu
 -- | Renumber the nodes according solely to their inputs, 
 -- | so nodes with the same inputs will have the same id
 -- | regardless of the previous.
-renameNodes :: G -> G
+renameNodes :: G -> RG
 renameNodes g = gmap renameCtxNode g
     where renameCtxNode (is, n, _, os) = (is, nameIs is, n, os)
           (_, mn) = nodeRange g
@@ -122,7 +122,7 @@ renameNodes g = gmap renameCtxNode g
           nameIs ((b, i):is) = i + (nameIs is * mn+1)
 
 -- | Joins 2 graphs into one, merging the nodes with the same inputs.
-union :: G -> G -> G
+union :: G -> G -> RG
 union g1 g2 = foldr insEdge g' (S.fromList $ labEdges g1' ++ labEdges g2')
     where g' = foldr insNode empty (S.fromList $ labNodes g1' ++ labNodes g2')
           g1' = renameNodes g1

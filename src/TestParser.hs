@@ -26,22 +26,12 @@ main = do --f <- getContents
                             --putStrLn $ showGraph g1
                             --putStrLn $ showGraph g2
                             putStrLn $ showGraph $ g1 `union` g2
-                      --print r
-                          -- putStrLn $ showGraph g
-                          {-
-                          hPutStrLn stderr $ "// 0 " ++ show (createBDD g 0)
-                          hPutStrLn stderr $ "// 1 " ++ show (createBDD g 1)
-                          hPutStrLn stderr $ "// 2 " ++ show (createBDD g 2)
-                          hPutStrLn stderr $ "// 3 " ++ show (createBDD g 3)
-                          hPutStrLn stderr $ "// 4 " ++ show (createBDD g 4)
-                          hPutStrLn stderr $ "// 5 " ++ show (createBDD g 5)
-                          hPutStrLn stderr $ "// 6 " ++ show (createBDD g 6)
-                          hPutStrLn stderr $ "// 7 " ++ show (createBDD g 7)
-                          -}
+                            hPutStrLn stderr $ "// 10 " ++ show (createBDD gu 10)
+                            hPutStrLn stderr $ "// 3  " ++ show (createBDD gu 3)
                             where i = foldl attIndexV emptyIndex [r1, r2] 
                                   v1 = verilogToInt r1 i
                                   v2 = verilogToInt r2 i
                                   g1 = makeGraphV v1
                                   g2 = makeGraphV v2
-                                  bdd = bddReduce $ createBDD g1 0
+                                  gu = g1 `union` g2
             [] -> error $ show (lefts ps)                                  
