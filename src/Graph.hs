@@ -7,12 +7,13 @@ import Debug.Trace
 import qualified Data.Set as S
 
 -- | The graph that models the circuit after Nand Synthesis Model
-type G = Gr () Bool
+--type G = Gr () Bool
+type G = Gr Int Bool
 
 
 -- | Creates all the nodes of the Graph
-wireNodes :: Verilog Int -> [Context () Bool]
-wireNodes v = [([], n, (), []) | n <- names v]
+wireNodes :: Verilog Int -> [Context Int Bool]
+wireNodes v = [([], n, n, []) | n <- names v]
 
 -- | Embeds all the wires in the graphs as disconnected nodes
 embedWires :: Verilog Int -> G -> G
@@ -42,7 +43,7 @@ negateA :: Adj Bool -> Adj Bool
 negateA = map (first not)
 
 -- | Negates all output edges of a ctx
-negateCtx (is, n, (), os) = (is, n, (), negateA os)
+negateCtx (is, n, nv, os) = (is, n, nv, negateA os)
 
 -- | Negates all output edges of a node
 negateV :: Int -> G -> G
@@ -80,7 +81,7 @@ embedNor is o g = foldr (\i g -> insEdge (i, o, False) g) g is
 embedXor :: [Int] -> Int -> G -> G 
 embedXor [i1, i2] o g = g''
     where [n1, n2] = newNodes 2 g
-          g'  = insNodes [(n1, ()), (n2, ())] g
+          g'  = insNodes [(n1, -1), (n2, -1)] g
           g'' = embedOr [i1, i2] n2 
               $ embedNand [i1, i2] n1 
               $ embedAnd [n1, n2] o g'
@@ -100,7 +101,7 @@ xor False y = y
 fixSingleNode :: Int -> G -> G
 fixSingleNode n g =  case match n g of
     (Just ctx, g') -> case ctx of
-       ([(vi, ni)], n, (), [(vo, no)]) -> insEdge (ni, no, not $ xor vi vo) g'
+       ([(vi, ni)], _, _, [(vo, no)]) -> insEdge (ni, no, not $ xor vi vo) g'
        _                               -> g
     (Nothing, _)  -> error "Could not match context in fixSingleNode"
 
@@ -110,7 +111,19 @@ fixSingleNodes g = foldr fixSingleNode g (nodes g)
 makeGraphV v = fixSingleNodes $ foldr embedF (embedWires v empty) (reverse $ _functions v)
 
 
+-- | Renumber the nodes according solely to their inputs, 
+-- | so nodes with the same inputs will have the same id
+-- | regardless of the previous.
+renameNodes :: G -> G
+renameNodes g = gmap renameCtxNode g
+    where renameCtxNode (is, n, _, os) = (is, nameIs is, n, os)
+          (_, mn) = nodeRange g
+          nameIs [] = 0
+          nameIs ((b, i):is) = i + (nameIs is * mn+1)
+
 -- | Joins 2 graphs into one, merging the nodes with the same inputs.
 union :: G -> G -> G
-union g1 g2 = foldr insEdge g' (S.fromList $ labEdges g1 ++ labEdges g2)
-    where g' = foldr insNode empty (S.fromList $ labNodes g1 ++ labNodes g2)
+union g1 g2 = foldr insEdge g' (S.fromList $ labEdges g1' ++ labEdges g2')
+    where g' = foldr insNode empty (S.fromList $ labNodes g1' ++ labNodes g2')
+          g1' = renameNodes g1
+          g2' = renameNodes g2
