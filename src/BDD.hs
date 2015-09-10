@@ -29,6 +29,7 @@ initialBDD v = B Zero v One
 -- | Creates a BDD for the given vertex
 -- | If the vertex is a source, the BDD is simple
 -- | if the vertex has many sorces, it must join all the sources
+-- | This is the slow version of the createBDD function
 createBDD' :: RG -> Int -> BDD
 createBDD' g n = case lpre g n of
     [] -> initialBDD n
@@ -36,6 +37,7 @@ createBDD' g n = case lpre g n of
         where createBDDe (p, b) | b     = createBDD g p
                                 | not b = negateBDD $ createBDD g p
 
+-- | Helper function to be used with createBDD or calculateBDDs
 createBDDmemo :: RG -> (Int -> BDD) -> Int -> BDD
 createBDDmemo g m n = case lpre g n of
     [] -> initialBDD n
@@ -43,6 +45,9 @@ createBDDmemo g m n = case lpre g n of
         where createBDDe (p, b) | b  = m p
                                 | not b = negateBDD $ m p
 
+-- | Creates a BDD for the given vertex
+-- | If the vertex is a source, the BDD is simple
+-- | if the vertex has many sorces, it must join all the sources
 createBDD :: RG -> Int -> BDD
 createBDD rg = memoFix (createBDDmemo rg)
 
