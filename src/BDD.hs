@@ -7,6 +7,7 @@ import Data.Graph.Inductive
 import Control.Arrow
 import Debug.Trace
 import Data.Maybe
+import Data.Function.Memoize
 import qualified Data.IntMap as M
 
 -- | A bdd has a source and a graph
@@ -28,12 +29,23 @@ initialBDD v = B Zero v One
 -- | Creates a BDD for the given vertex
 -- | If the vertex is a source, the BDD is simple
 -- | if the vertex has many sorces, it must join all the sources
-createBDD :: RG -> Int -> BDD
-createBDD g n = case lpre g n of
+createBDD' :: RG -> Int -> BDD
+createBDD' g n = case lpre g n of
     [] -> initialBDD n
     ps -> foldl1 bddAnd (map createBDDe ps)
         where createBDDe (p, b) | b     = createBDD g p
                                 | not b = negateBDD $ createBDD g p
+
+createBDDmemo :: RG -> (Int -> BDD) -> Int -> BDD
+createBDDmemo g m n = case lpre g n of
+    [] -> initialBDD n
+    ps -> foldl1 bddAnd (map createBDDe ps)
+        where createBDDe (p, b) | b  = m p
+                                | not b = negateBDD $ m p
+
+createBDD :: RG -> Int -> BDD
+createBDD rg = memoFix (createBDDmemo rg)
+
 
 -- | Negates the BDD (inverts Zeros and Ones)
 negateBDD Zero      = One
