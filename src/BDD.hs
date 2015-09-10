@@ -12,7 +12,7 @@ import qualified Data.IntMap as M
 
 -- | A bdd has a source and a graph
 data BDD = Zero | One | B BDD Int BDD
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 --  accessor for the zero
 --zero (B z v o) = z
@@ -101,3 +101,8 @@ bddReduce Zero = Zero
 bddReduce One = One
 bddReduce b@(B z v o) | bddReduce z == bddReduce o    = z
                       | otherwise                    = b
+
+-- | Checks if a node is in the graph
+memberGraph n g = case match n g of
+                    (Just _, _) -> True
+                    _           -> False

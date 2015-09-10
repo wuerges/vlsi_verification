@@ -1,6 +1,6 @@
 module Graph where
 
-import Verilog 
+import Verilog
 import Data.Graph.Inductive
 import Control.Arrow
 import Debug.Trace
@@ -8,7 +8,7 @@ import qualified Data.Set as S
 
 -- | The graph that models the circuit after Nand Synthesis Model
 type G = Gr () Bool
-type RG = Gr Int Bool
+type RG = Gr [Int] Bool
 
 
 -- | Creates all the nodes of the Graph
@@ -24,7 +24,7 @@ falses = repeat False
 
 -- | Embeds a Function in the graph.
 embedF :: Function Int -> G -> G
-embedF (Fun op os is) g = 
+embedF (Fun op os is) g =
     case op of
     --case traceShow ("embedF ", op, os, is , g)  op of
        And  -> embedAnd is o g
@@ -48,17 +48,17 @@ negateCtx (is, n, nv, os) = (is, n, nv, negateA os)
 -- | Negates all output edges of a node
 negateV :: Int -> G -> G
 negateV n g = let (mc, g') = match n g
-              in case mc of 
+              in case mc of
                 Just ctx -> negateCtx ctx & g'
                 Nothing -> error "could not find vertex in negateV"
 
 -- | Should insert a few edges in the graph.
 embedBuf :: Int -> [Int] -> G -> G
-embedBuf i os g = foldr (\o g -> insEdge (i, o, True) g) g os 
+embedBuf i os g = foldr (\o g -> insEdge (i, o, True) g) g os
 
--- | Inserts a Not function in the graph. 
+-- | Inserts a Not function in the graph.
 -- | Does this by negating all the outputs of a current vertex.
-embedNot i os g = foldr (\o g -> insEdge (i, o, True) g) (foldr negateV g os) os 
+embedNot i os g = foldr (\o g -> insEdge (i, o, True) g) (foldr negateV g os) os
 
 -- | Inserts an And function into the graph
 embedAnd :: [Int] -> Int -> G -> G
@@ -78,12 +78,12 @@ embedNor :: [Int] -> Int -> G -> G
 embedNor is o g = foldr (\i g -> insEdge (i, o, False) g) g is
 
 -- | Inserts a Xor function into the graph
-embedXor :: [Int] -> Int -> G -> G 
+embedXor :: [Int] -> Int -> G -> G
 embedXor [i1, i2] o g = g''
     where [n1, n2] = newNodes 2 g
           g'  = insNodes [(n1, ()), (n2, ())] g
-          g'' = embedOr [i1, i2] n2 
-              $ embedNand [i1, i2] n1 
+          g'' = embedOr [i1, i2] n2
+              $ embedNand [i1, i2] n1
               $ embedAnd [n1, n2] o g'
 embedXor _ _ _ = error "Xor only is defined to 2 inputs"
 
@@ -111,12 +111,12 @@ fixSingleNodes g = foldr fixSingleNode g (nodes g)
 makeGraphV v = fixSingleNodes $ foldr embedF (embedWires v empty) (reverse $ _functions v)
 
 
--- | Renumber the nodes according solely to their inputs, 
+-- | Renumber the nodes according solely to their inputs,
 -- | so nodes with the same inputs will have the same id
 -- | regardless of the previous.
 renameNodes :: G -> RG
 renameNodes g = gmap renameCtxNode g
-    where renameCtxNode (is, n, _, os) = (is, nameIs is, n, os)
+    where renameCtxNode (is, n, _, os) = (is, nameIs is, [n], os)
           (_, mn) = nodeRange g
           nameIs [] = 0
           nameIs ((b, i):is) = i + (nameIs is * mn+1)
