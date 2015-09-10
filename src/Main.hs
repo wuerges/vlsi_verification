@@ -1,3 +1,4 @@
-import qualified TestParser as T
+import qualified TestParser as P
+import qualified TestEquiv as E
 
-main = T.main
+main = E.main

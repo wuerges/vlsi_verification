@@ -36,10 +36,38 @@ createBDD' g n = case lpre g n of
     ps -> foldl1 bddAnd (map createBDDe ps)
         where createBDDe (p, b) | b     = createBDD g p
                                 | not b = negateBDD $ createBDD g p
+-- | calculates all BDDs
+--calculateAllBDDs :: RG -> M.IntMap BDD
+--calculateAllBDDs g = map (createBDD g) (nodes g)
+
+-- | This complicated version should be completely avoided, since it is probably wrong
+calculateAllBDDs :: RG -> M.IntMap BDD
+calculateAllBDDs g = cbdds M.empty (nodes g)
+  where cbdds m []     = m
+        cbdds m (n:ns) = cbdds (fst $ calculateBDD g m n) ns
+
+-- | This complicated version should be completely avoided, since it is probably wrong
+calculateBDD :: RG -> M.IntMap BDD -> Int -> (M.IntMap BDD, BDD)
+calculateBDD g m n = case lpre g n of
+    [] -> dup (m, initialBDD n)
+    ps -> dup (m', foldl1 bddAnd bdds)
+      where (m', bdds) = foldl createBDDe (m, []) ps
+            createBDDe :: (M.IntMap BDD, [BDD]) -> (Int, Bool) -> (M.IntMap BDD, [BDD])
+            createBDDe (mi, l) (p, b) | b     = dupl l $ lookupBDD g mi p
+                                      | not b = dupl l $ negateBDDm (-p) $ lookupBDD g mi p
+            lookupBDD g mi p = case M.lookup p mi of
+              Just bdd -> (mi, bdd)
+              Nothing  -> calculateBDD g mi p
+            negateBDDm k (mi, bdd) = case M.lookup k mi of
+              Just bddNeg -> (mi, bddNeg)
+              Nothing ->  dup (mi, negateBDD bdd)
+
+  where dup    (m, bdd) = (M.insert n bdd m, bdd)
+        dupl l (m, bdd) = (m, bdd:l)
 
 -- | Helper function to be used with createBDD or calculateBDDs
 createBDDmemo :: RG -> (Int -> BDD) -> Int -> BDD
-createBDDmemo g m n = case lpre g n of
+createBDDmemo g m n = bddReduce $ case lpre g n of
     [] -> initialBDD n
     ps -> foldl1 bddAnd (map createBDDe ps)
         where createBDDe (p, b) | b  = m p
@@ -50,7 +78,6 @@ createBDDmemo g m n = case lpre g n of
 -- | if the vertex has many sorces, it must join all the sources
 createBDD :: RG -> Int -> BDD
 createBDD rg = memoFix (createBDDmemo rg)
-
 
 -- | Negates the BDD (inverts Zeros and Ones)
 negateBDD Zero      = One
@@ -72,5 +99,5 @@ bddAnd b1@(B z1 v1 o1) b2@(B z2 v2 o2) | v1 > v2 = B (bddAnd z1 b2) v1 (bddAnd o
 -- | Reduces a OBDD into a ORBDD
 bddReduce Zero = Zero
 bddReduce One = One
-bddReduce b@(B z v o) | z == o    = z
-                      | otherwise = b
+bddReduce b@(B z v o) | bddReduce z == bddReduce o    = z
+                      | otherwise                    = b
