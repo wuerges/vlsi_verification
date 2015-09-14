@@ -2,6 +2,9 @@ module TestEquiv where
 
 import VerParser
 import Algo
+import Kuelmann97
+
+
 import System.Environment
 import Equivalence
 import Data.Either
