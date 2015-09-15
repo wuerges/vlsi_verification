@@ -11,23 +11,28 @@ import qualified Data.Map as M
 
 -- | Checks Equivalence of circuits based on Kuelmann97
 equivKuelmann97 :: Checker
-equivKuelmann97 g1 g2 [o1] [o2] = checkExitPair result o1 o2
+equivKuelmann97 g1 g2 os1 os2 = checkExits result os1 os2
     where g = g1 `union` g2
-          (_, _, result) = until (checkStop o1 o2) kuelmannStep (m0, is0, g)
+          (_, _, result) = until (checkStop os1 os2) kuelmannStep (m0, is0, g)
           m0 = initialMap g is0
           is0 = initialInputs g
 
 -- | Checks if both outputs are mapped to the same node in rg
-checkExitPair :: RG -> Int -> Int -> Maybe Bool
-checkExitPair rg o1 o2 = --trace ("checkExitPair: " ++ show (o1, o2)) $
+checkExits :: RG -> [Int] -> [Int] -> Maybe Bool
+checkExits rg os1 os2 = if result then Just result else Nothing
+  where cp (o1, o2) = maybe False (\_ -> True) (checkPair rg o1 o2)
+        result = all cp (zip os1 os2)
+
+-- | Checks if a pair in the exit is equivalent or not
+checkPair rg o1 o2 =
   case filter (\(n, v) -> elem o1 v && elem o2 v ) (labNodes rg) of
     [only] -> Just True
     _      -> Nothing
 
 -- | Checks if analysis should stop
-checkStop :: Int -> Int -> (M.Map BDD Int, [Int], RG) -> Bool
-checkStop o1 o2 (_, [], g) = False
-checkStop o1 o2 (_, _, g) = maybe False (\_ -> True) (checkExitPair g o1 o2)
+checkStop :: [Int] -> [Int] -> (M.Map BDD Int, [Int], RG) -> Bool
+checkStop os1 os2 (_, [], g) = False
+checkStop os1 os2 (_, _, g) = maybe False (\_ -> True) (checkExits g os1 os2)
 
 -- | Performs one step of the iteration
 kuelmannStep :: (M.Map BDD Int, [Int], RG) -> (M.Map BDD Int, [Int], RG)
