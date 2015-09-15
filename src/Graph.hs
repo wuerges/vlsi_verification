@@ -85,10 +85,11 @@ embedXor [i1, i2] o g = g''
           g'' = embedOr [i1, i2] n2
               $ embedNand [i1, i2] n1
               $ embedAnd [n1, n2] o g'
-embedXor _ _ _ = error "Xor only is defined to 2 inputs"
+embedXor _ _ _ = error $ "Xor only is defined to 2 inputs."
 
 -- | Inserts a Xnor gate into the graph
-embedXnor is o g = embedXor is o (negateV o g)
+embedXnor is@[_, _] o g = embedXor is o (negateV o g)
+embedXnor _ _ _ = error $ "Xnor only is defined to 2 inputs."
 
 
 -- | Exclusive or
@@ -127,3 +128,5 @@ union g1 g2 = foldr insEdge g' (S.fromList $ labEdges g1' ++ labEdges g2')
     where g' = foldr insNode empty (S.fromList $ labNodes g1' ++ labNodes g2')
           g1' = renameNodes g1
           g2' = renameNodes g2
+
+
