@@ -85,11 +85,12 @@ embedXor [i1, i2] o g = g''
           g'' = embedOr [i1, i2] n2
               $ embedNand [i1, i2] n1
               $ embedAnd [n1, n2] o g'
-embedXor _ _ _ = error $ "Xor only is defined to 2 inputs."
+embedXor (i1:i2:is) o g = g'
+    where [n]  = newNodes 1 g
+          g'   = embedXor (n:is) o $ embedXor [i1, i2] n $ insNode (n, ()) g
 
 -- | Inserts a Xnor gate into the graph
-embedXnor is@[_, _] o g = embedXor is o (negateV o g)
-embedXnor _ _ _ = error $ "Xnor only is defined to 2 inputs."
+embedXnor is o g = embedXor is o (negateV o g)
 
 
 -- | Exclusive or

@@ -13,18 +13,29 @@ This project is:
 
 Since the project is in its beginnings, there is not much in this section.
 
-But just for a taste, the following code parses a verilog file into a graph and
-prints it into a format that can be used with graphviz:
+But just for a taste, the following code checks the equivalence of 2 circuits using the first algorithm from 
+[this paper](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.60.5265).
+
 ```Haskell
+module TestEquiv where
+
+import VerParser
+import Algo
+import Kuelmann97
+
+import System.Environment
+import Equivalence
+import Data.Either
+
 main :: IO ()
-main = do 
-          [f] <- getArgs
-          p <- parseVerilog f
-          case p of
-            Right r -> do putStrLn $ showGraph g
-                          where vi = verilogToInt r (attIndexV emptyIndex r)
-                                g = makeGraphV vi
-            Left l ->  error $ show l
+main = do
+          [f1, f2] <- getArgs
+          p1 <- parseVerilog f1
+          p2 <- parseVerilog f2
+          case rights [p1, p2] of
+            [r1, r2] -> print $ equiv equivKuelmann97 r1 r2
+            _ -> error $ show $ lefts [p1, p2]
+
 ```
 
 ## Motivation
@@ -44,7 +55,19 @@ In other words, testing circuits is not easy and we need more tools to do it.
 
 ## Installation
 
-TODO
+This projects aims to reduce the amount of depencies to the most. 
+The only dependencies are the haskell platform (GHC 7.10) and the modules ***fgl***, ***parsec*** and ***fgl-visualize*** from cabal.
+Thes can be istalled by running 
+
+> cabal install fgl parsec fgl-visualize
+
+Later the source code can be compiled using.
+
+> ghc -O2 Main.hs
+
+The equivalence of 2 circuits can then be checked by running:
+
+> ./Main <circuit1.v> <circuit2.v>
 
 ## API Reference
 
