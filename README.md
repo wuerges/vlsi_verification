@@ -67,7 +67,7 @@ Later the source code can be compiled using.
 
 The equivalence of 2 circuits can then be checked by running:
 
-> ./Main <circuit1.v> <circuit2.v>
+> ./Main circuit1.v circuit2.v
 
 ## API Reference
 
@@ -75,11 +75,11 @@ Since API is not yet defined, it is not wise yet to publish it.
 
 ## Tests
 
-No automated tests are available (yet).
+No automated tests are available (yet). However, the ***tests*** folder contains many circuit tests obtained from the Problem B of the ICCAD Contest 2015.
 
 ## Contributors
 
-For now, only me. But I welcome contributors.
+For now, only me. But I welcome other contributors!
 
 ## License
 
