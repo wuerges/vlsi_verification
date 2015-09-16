@@ -1,4 +1,4 @@
-module GenTestHarness where
+module Main where
 
 import Verilog
 import VerParser
@@ -12,31 +12,51 @@ mkOutputs r = intercalate ", " (_outputs r)
 mkInputs r = intercalate ", " (_inputs r)
 randomSignals r = " "
 
-mkMonitor r = "\"" ++ intercalate ", " (map m1 $ _inputs r ++ _outputs r) ++ "\""
+
+fib = (map fib' [0..] !!)
+  where fib' 0 = 1
+        fib' 1 = 1
+        fib' n = fib (n-2) + fib (n-1)
+
+mkMonitor r = "\"" ++ intercalate ", " (map m1 $ _outputs r) ++ "\""
   where m1 s = s ++ "=%b"
 
-harness r = "module harness (" ++ mkSignals r ++ "); \n\
-            \output " ++ mkOutputs r ++ ";           \n\
-            \input " ++ mkInputs r ++ ";             \n\
-            \                                      \n\
-            \top toptop1(" ++ mkSignals r ++ ");   \n\
-            \                                      \n\
-            \initial                               \n\
-            \begin                                 \n\
-            \  $monitor(" ++ mkMonitor r ++ ",       \n\
-            \           " ++ mkSignals r ++ ");      \n\
-            \                                      \n\
-            \                                      \n\
-            \ " ++ randomSignals r ++ "              \n\
-            \end                                   \n\
-            \                                      \n\
-            \endmodule                             \n"
+
+mkStep r ns = "#10 " ++ intercalate " " (map st $ zip (_inputs r) ns)
+  where st (i, n)  = i ++  " = " ++ show (number n)  ++ "; \n"
+        number n = if n `mod` 3 == 0 then 1 else if n `mod` 7 == 0 then 1 else if n `mod` 13 == 0 then 1 else 0
+
+
+mkManySteps _ [] = ""
+mkManySteps r l  = mkStep r x ++ mkManySteps r xs
+  where (x, xs) = splitAt (length $ _inputs r) l
+
+fibs n = map fib [0..n]
+
+
+harness r mn n = "module harness (" ++ mkOutputs r ++ "); \n\
+                 \output " ++ mkOutputs r ++ ";           \n\
+                 \reg " ++ mkInputs r ++ ";             \n\
+                 \                                      \n\
+                 \\n" ++ mn ++  " toptop1(" ++ mkSignals r ++ ");   \n\
+                 \                                      \n\
+                 \initial                               \n\
+                 \begin                                 \n\
+                 \  $monitor(" ++ mkMonitor r ++ ",       \n\
+                 \           " ++ mkOutputs r ++ ");      \n\
+                 \                                      \n\
+                 \ " ++ mkManySteps r (fibs n) ++ "         \n\
+                 \                                      \n\
+                 \ " ++ randomSignals r ++ "              \n\
+                 \end                                   \n\
+                 \                                      \n\
+                 \endmodule                             \n"
 
 
 main :: IO ()
 main = do
-          [f] <- getArgs
+          [f, mn, n] <- getArgs
           p <- parseVerilog f
           case p of
-            Right r -> do putStr $ harness r
+            Right r -> do putStr $ harness r mn (read n)
             Left l -> error $ show l
