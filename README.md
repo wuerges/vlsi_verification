@@ -77,6 +77,40 @@ Since API is not yet defined, it is not wise yet to publish it.
 
 No automated tests are available (yet). However, the ***tests*** folder contains many circuit tests obtained from the Problem B of the ICCAD Contest 2015.
 
+Currently, circuits are being checked by 2 methods: 
+
+1. The first one is random simulation using Icarus Verilog. Unfortunately Icarus cannot handle
+the verilogs from units3 to unit9.
+
+2. The second is performed by Kuelmann 97. 
+
+| Test      | iverilog | Kuelmann 97 |
+|:----------|---------:|------------:|
+| BDD       | Yes      | Yes         |
+| BDD_wrong | No       | Fail        |
+| unit1     | Yes      | N/A         |
+| unit2     | No       | N/A         |
+| unit3     | Fail     | N/A         |
+| unit4     | Fail     | N/A         |
+| unit5     | Fail     | N/A         |
+| unit7     | Fail     | N/A         |
+| unit8     | Fail     | N/A         |
+| unit9     | Fail     | N/A         |
+| unit10    | Yes      | N/A         |
+| unit11    | No       | N/A         |
+| unit12    | Yes      | N/A         |
+| unit13    | No       | N/A         |
+| unit14    | Yes      | N/A         |
+| unit15    | No       | N/A         |
+| unit16    | Yes      | N/A         |
+| unit17    | No       | N/A         |
+
+Legend: 
+* Yes: The circuits are equivalent.
+* No: The circuits are not equivalent.
+* Fail: The tool fails when checking this input.
+* N/A: The tool was not well tested with this input.
+
 ## Contributors
 
 For now, only me. But I welcome other contributors!

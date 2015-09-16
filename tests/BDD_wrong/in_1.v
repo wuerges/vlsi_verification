@@ -2,7 +2,7 @@ module top (a, b, c, y);
 input a, b, c;
 output y;
 
-wire na, nb, n1, n4, n4, n6, n7;
+wire na, nb, n1, n4, n6, n7;
 
 not(na, a);
 not(nb, b);

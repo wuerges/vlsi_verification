@@ -22,7 +22,9 @@ mkMonitor r = "\"" ++ intercalate ", " (map m1 $ _outputs r) ++ "\""
   where m1 s = s ++ "=%b"
 
 
-mkStep r ns = "#10 " ++ intercalate " " (map st $ zip (_inputs r) ns)
+mkDisplay r = "$display(" ++ mkMonitor r ++ ", " ++ mkOutputs r ++ ");"
+
+mkStep r ns = "#10 " ++ intercalate " " (map st $ zip (_inputs r) ns) ++ "\n" ++ mkDisplay r
   where st (i, n)  = i ++  " = " ++ show (number n)  ++ "; \n"
         number n = if n `mod` 3 == 0 then 1 else if n `mod` 7 == 0 then 1 else if n `mod` 13 == 0 then 1 else 0
 
@@ -42,8 +44,6 @@ harness r mn n = "module harness (" ++ mkOutputs r ++ "); \n\
                  \                                      \n\
                  \initial                               \n\
                  \begin                                 \n\
-                 \  $monitor(" ++ mkMonitor r ++ ",       \n\
-                 \           " ++ mkOutputs r ++ ");      \n\
                  \                                      \n\
                  \ " ++ mkManySteps r (fibs n) ++ "         \n\
                  \                                      \n\

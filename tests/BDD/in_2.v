@@ -2,7 +2,7 @@ module top (a, b, c, x);
 input a, b, c;
 output x;
 
-wire n1, n4, n4, n6, n7;
+wire n1, n4, n6, n7;
 
 and ( n1, a, b);
 nand( n4, n1, c);
