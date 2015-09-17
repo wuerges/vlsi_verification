@@ -25,7 +25,7 @@ makeTest e f = TestCase (do p1 <- parseVerilog $ "tests/"++f++"/in_1.v"
                             p2 <- parseVerilog $ "tests/"++f++"/in_2.v"
                             case rights [p1, p2] of
                               [r1, r2] -> assertEqual ("Kuelmann97 test: \""
-                                            ++ f ++ "\"") (equiv equivKuelmann97 r1 r2) e
+                                            ++ f ++ "\"") e (equiv equivKuelmann97 r1 r2)
                               _ -> assertFailure $ show $ lefts [p1, p2])
 
 tests = TestList $ (map (makeTest (Just True)) filesCorrect) ++ (map (makeTest Nothing) filesWrong)
