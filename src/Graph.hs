@@ -5,6 +5,7 @@ import Data.Graph.Inductive
 import Control.Arrow
 import Debug.Trace
 import qualified Data.Set as S
+import qualified Data.Map as M
 
 -- | The graph that models the circuit after Nand Synthesis Model
 type G = Gr () Bool
@@ -112,22 +113,30 @@ fixSingleNodes g = foldr fixSingleNode g (nodes g)
 
 makeGraphV v = fixSingleNodes $ foldr embedF (embedWires v empty) (reverse $ _functions v)
 
+-- | Checks if a node is an input
+input :: Gr a b -> Int -> Bool
+input g n = indeg g n == 0
+
+-- | Calculates the nodes without input edges
+inputs :: G -> [Int]
+inputs g = [n | n <- nodes g, input g n]
+
 
 -- | Renumber the nodes according solely to their inputs,
 -- | so nodes with the same inputs will have the same id
 -- | regardless of the previous.
-renameNodes :: G -> RG
-renameNodes g = gmap renameCtxNode g
-    where renameCtxNode (is, n, _, os) = (is, nameIs is, [n], os)
-          (_, mn) = nodeRange g
-          nameIs [] = 0
-          nameIs ((b, i):is) = i + (nameIs is * mn+1)
+renameNodes :: G -> Int -> RG
+renameNodes g i = gmap renameCtxNode g
+    where renameCtxNode ([], n, (), os) = ([], n, [n], os)
+          renameCtxNode (is, n, (), os)  = (is, n+i, [n,n+i], os)
 
 -- | Joins 2 graphs into one, merging the nodes with the same inputs.
 union :: G -> G -> RG
-union g1 g2 = foldr insEdge g' (S.fromList $ labEdges g1' ++ labEdges g2')
+union g1 g2 = traceShow g'' g''
     where g' = foldr insNode empty (S.fromList $ labNodes g1' ++ labNodes g2')
-          g1' = renameNodes g1
-          g2' = renameNodes g2
+          g'' = foldr insEdge g' (S.fromList $ labEdges g1' ++ labEdges g2')
+          g1' = renameNodes g1 0
+          g2' = renameNodes g2 (mn + 10)
+          (_, mn) = nodeRange g1'
 
 

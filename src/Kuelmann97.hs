@@ -19,15 +19,16 @@ equivKuelmann97 g1 g2 os1 os2 = checkExits result os1 os2
 
 -- | Checks if both outputs are mapped to the same node in rg
 checkExits :: RG -> [Int] -> [Int] -> Maybe Bool
-checkExits rg os1 os2 = if result then Just result else Nothing
+checkExits rg os1 os2 = traceShow (os1, os2) $
+  if result then Just result else Nothing
   where cp (o1, o2) = maybe False (\_ -> True) (checkPair rg o1 o2)
         result = all cp (zip os1 os2)
 
 -- | Checks if a pair in the exit is equivalent or not
-checkPair rg o1 o2 =
-  case filter (\(n, v) -> elem o1 v && elem o2 v ) (labNodes rg) of
+checkPair rg o1 o2 = trace ("o1: " ++ show o1 ++ " o2:" ++ show o2 ++ " result: " ++ show  result) $ case result  of
     [only] -> Just True
     _      -> Nothing
+  where result = filter (\(n, v) -> elem o1 v && elem o2 v ) (labNodes rg)
 
 -- | Checks if analysis should stop
 checkStop :: [Int] -> [Int] -> (M.Map BDD Int, [Int], RG) -> Bool
