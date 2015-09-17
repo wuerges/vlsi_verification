@@ -15,7 +15,7 @@ equivKuelmann97 g1 g2 os1 os2 = checkExits result os1 os2
     where g = g1 `union` g2
           (_, _, result) = until (checkStop os1 os2) kuelmannStep (m0, is0, g)
           m0 = initialMap g is0
-          is0 = initialInputs g
+          is0 = topsort g
 
 -- | Checks if both outputs are mapped to the same node in rg
 checkExits :: RG -> [Int] -> [Int] -> Maybe Bool
@@ -32,20 +32,20 @@ checkPair rg o1 o2 = trace ("o1: " ++ show o1 ++ " o2:" ++ show o2 ++ " result: 
 
 -- | Checks if analysis should stop
 checkStop :: [Int] -> [Int] -> (M.Map BDD Int, [Int], RG) -> Bool
-checkStop os1 os2 (_, [], g) = False
+checkStop os1 os2 (_, [], g) = True
 checkStop os1 os2 (_, _, g) = maybe False (\_ -> True) (checkExits g os1 os2)
 
 -- | Performs one step of the iteration
 kuelmannStep :: (M.Map BDD Int, [Int], RG) -> (M.Map BDD Int, [Int], RG)
 kuelmannStep (m, [], g) = (m, [] , g)
-kuelmannStep (m, (i:is), g) | memberNode i g = --traceShow (m', is', g')
-                                (m', is', g')
+kuelmannStep (m, (i:is), g) | memberNode i g = trace (" WORK LIST: " ++ show (i:is)) $
+                                (m', is, g')
                             | otherwise      = (m, is, g)
   where (m', g') = case M.lookup bdd m of
                           Just c -> (m, if c == i then g else mergeNodes g i c)
                           Nothing -> (M.insert bdd i m, g)
         --g' = maybe g (\c -> if c == i then g else mergeNodes g i c) (M.lookup bdd m)
-        is' = nub $ is ++ suc g i
+        --is' = nub $ is ++ suc g i
         --m' = M.insertWith (\_ o -> o) bdd i m
         bdd = createBDD g i
 

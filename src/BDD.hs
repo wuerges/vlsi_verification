@@ -3,6 +3,7 @@ module BDD where
 import Verilog
 import Graph
 
+import Control.Parallel
 import Data.Graph.Inductive
 import Control.Arrow
 import Debug.Trace
@@ -93,9 +94,20 @@ bddAnd _ Zero = Zero
 bddAnd One  b = b
 bddAnd b  One = b
 
+
 bddAnd b1@(B z1 v1 o1) b2@(B z2 v2 o2) | v1 > v2 = B (bddAnd z1 b2) v1 (bddAnd o1 b2)
                                        | v1 == v2 = B (bddAnd z1 z2) v1 (bddAnd o1 o2)
                                        | v1 < v2 = B (bddAnd z2 b1) v2 (bddAnd o2 b1)
+{-bddAnd b1@(B z1 v1 o1) b2@(B z2 v2 o2) | v1 > v2 = B (r1 `pseq` l1) v1 r1
+                                       | v1 == v2 = B (r2 `pseq` l2) v1 r2
+                                       | v1 < v2 = B (r3 `pseq` l3) v2 r3
+  where l1 = bddAnd z1 b2
+        r1 = bddAnd o1 b2
+        l2 = bddAnd z1 z2
+        r2 = bddAnd o1 o2
+        l3 = bddAnd z2 b1
+        r3 = bddAnd o2 b1
+-}
 -- | Reduces a OBDD into a ORBDD
 bddReduce Zero = Zero
 bddReduce One = One
