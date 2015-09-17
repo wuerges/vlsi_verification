@@ -19,13 +19,14 @@ equivKuelmann97 g1 g2 os1 os2 = checkExits result os1 os2
 
 -- | Checks if both outputs are mapped to the same node in rg
 checkExits :: RG -> [Int] -> [Int] -> Maybe Bool
-checkExits rg os1 os2 = traceShow (os1, os2) $
+checkExits rg os1 os2 = --traceShow (os1, os2) $
   if result then Just result else Nothing
   where cp (o1, o2) = maybe False (\_ -> True) (checkPair rg o1 o2)
         result = all cp (zip os1 os2)
 
 -- | Checks if a pair in the exit is equivalent or not
-checkPair rg o1 o2 = trace ("o1: " ++ show o1 ++ " o2:" ++ show o2 ++ " result: " ++ show  result) $ case result  of
+checkPair rg o1 o2 = --trace ("o1: " ++ show o1 ++ " o2:" ++ show o2 ++ " result: " ++ show  result) $
+  case result  of
     [only] -> Just True
     _      -> Nothing
   where result = filter (\(n, v) -> elem o1 v && elem o2 v ) (labNodes rg)
@@ -38,7 +39,7 @@ checkStop os1 os2 (_, _, g) = maybe False (\_ -> True) (checkExits g os1 os2)
 -- | Performs one step of the iteration
 kuelmannStep :: (M.Map BDD Int, [Int], RG) -> (M.Map BDD Int, [Int], RG)
 kuelmannStep (m, [], g) = (m, [] , g)
-kuelmannStep (m, (i:is), g) | memberNode i g = trace (" WORK LIST: " ++ show (i:is)) $
+kuelmannStep (m, (i:is), g) | memberNode i g = --trace (" WORK LIST: " ++ show (i:is)) $
                                 (m', is, g')
                             | otherwise      = (m, is, g)
   where (m', g') = case M.lookup bdd m of

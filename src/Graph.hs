@@ -132,7 +132,7 @@ renameNodes g i = gmap renameCtxNode g
 
 -- | Joins 2 graphs into one, merging the nodes with the same inputs.
 union :: G -> G -> RG
-union g1 g2 = traceShow g'' g''
+union g1 g2 = g'' --traceShow g'' g''
     where g' = foldr insNode empty (S.fromList $ labNodes g1' ++ labNodes g2')
           g'' = foldr insEdge g' (S.fromList $ labEdges g1' ++ labEdges g2')
           g1' = renameNodes g1 0

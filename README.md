@@ -75,7 +75,11 @@ Since API is not yet defined, it is not wise yet to publish it.
 
 ## Tests
 
-No automated tests are available (yet). However, the ***tests*** folder contains many circuit tests obtained from the Problem B of the ICCAD Contest 2015.
+Automated test can be executed by running the following line:
+
+> cabal test
+
+This will try to check the equivalence of the tests contained in the ***tests*** folder, obtained from the Problem B of the ICCAD Contest 2015.
 
 Currently, circuits are being checked by 2 methods: 
 
@@ -87,7 +91,7 @@ the verilogs from units3 to unit9.
 | Test      | iverilog | Kuelmann 97 |
 |:----------|---------:|------------:|
 | BDD       | Yes      | Yes         |
-| BDD_wrong | No       | Fail        |
+| BDD_wrong | No       | No          |
 | unit1     | Yes      | N/A         |
 | unit2     | No       | N/A         |
 | unit3     | Fail     | N/A         |

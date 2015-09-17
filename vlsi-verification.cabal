@@ -48,23 +48,25 @@ extra-source-files:  Readme.md
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
+test-suite test-kuelmann
+  type: exitcode-stdio-1.0
+  main-is: TestKuelmann97.hs
+  build-depends:       base >=4.8 && <4.9, parsec, containers >=0.5 && <0.6, fgl >=5.5 && <5.6,
+                       fgl-visualize >=0.1 && <0.2, memoize, parallel, HUnit
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+
+executable Kuelmann97
+  build-depends:       base >=4.8 && <4.9, parsec, containers >=0.5 && <0.6, fgl >=5.5 && <5.6,
+                       fgl-visualize >=0.1 && <0.2, memoize, parallel
+  hs-source-dirs:      src
+  main-is: Main.hs
+  default-language:    Haskell2010
 
 library
-  -- Modules exported by the library.
+  build-depends:       base >=4.8 && <4.9, parsec, containers >=0.5 && <0.6, fgl >=5.5 && <5.6,
+                       fgl-visualize >=0.1 && <0.2, memoize, parallel
   exposed-modules:     TestEquiv, Verilog, TestParser, VerParser, Graph, BDD, Equivalence, Algo
-  
-  -- Modules included in this library but not exported.
-  -- other-modules:       
-  
-  -- LANGUAGE extensions used by modules in this package.
-  -- other-extensions:    
-  
-  -- Other library packages from which modules are imported.
-  build-depends:       base >=4.8 && <4.9, parsec, containers >=0.5 && <0.6, fgl >=5.5 && <5.6, fgl-visualize >=0.1 && <0.2
-  
-  -- Directories containing source files.
   hs-source-dirs:      src
-  
-  -- Base language which the package is written in.
   default-language:    Haskell2010
   
