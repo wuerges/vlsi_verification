@@ -18,11 +18,9 @@ equivKuelmann97 g1 g2 os1 os2 = checkExits result os1 os2
           is0 = topsort g
 
 -- | Checks if both outputs are mapped to the same node in rg
-checkExits :: RG -> [Int] -> [Int] -> Maybe Bool
+checkExits :: RG -> [Int] -> [Int] -> Bool
 checkExits rg os1 os2 = --traceShow (os1, os2) $
-  if result then Just result else Nothing
-  where cp (o1, o2) = maybe False (\_ -> True) (checkPair rg o1 o2)
-        result = all cp (zip os1 os2)
+  all (\(o1, o2) -> success $ checkPair rg o1 o2) (zip os1 os2)
 
 -- | Checks if a pair in the exit is equivalent or not
 checkPair rg o1 o2 = --trace ("o1: " ++ show o1 ++ " o2:" ++ show o2 ++ " result: " ++ show  result) $
@@ -34,7 +32,7 @@ checkPair rg o1 o2 = --trace ("o1: " ++ show o1 ++ " o2:" ++ show o2 ++ " result
 -- | Checks if analysis should stop
 checkStop :: [Int] -> [Int] -> (M.Map BDD Int, [Int], RG) -> Bool
 checkStop os1 os2 (_, [], g) = True
-checkStop os1 os2 (_, _, g) = maybe False (\_ -> True) (checkExits g os1 os2)
+checkStop os1 os2 (_, _, g)  = checkExits g os1 os2
 
 -- | Performs one step of the iteration
 kuelmannStep :: (M.Map BDD Int, [Int], RG) -> (M.Map BDD Int, [Int], RG)
