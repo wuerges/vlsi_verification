@@ -9,13 +9,10 @@ import BDD
 import System.Environment
 import Data.Graph.Inductive
 import System.IO
-import Data.Graph.Inductive.Dot
 import Control.Monad
 import Data.Either
 
 
-
-showGraph g = showDot $ fglToDot $ gmap (\(is, n, _, os) -> (is, n, show n, os)) g
 
 main :: IO ()
 main = do --f <- getContents

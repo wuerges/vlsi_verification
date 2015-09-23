@@ -2,6 +2,7 @@ module Graph where
 
 import Verilog
 import Data.Graph.Inductive
+import Data.Graph.Inductive.Dot
 import Control.Arrow
 import Debug.Trace
 import qualified Data.Set as S
@@ -10,6 +11,9 @@ import qualified Data.Map as M
 -- | The graph that models the circuit after Nand Synthesis Model
 type G = Gr () Bool
 type RG = Gr [Int] Bool
+
+-- | Corverts a graph to a GraphViz format
+showGraph g = showDot $ fglToDot $ gmap (\(is, n, _, os) -> (is, n, show n, os)) g
 
 
 -- | Creates all the nodes of the Graph
