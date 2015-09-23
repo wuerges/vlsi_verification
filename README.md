@@ -88,26 +88,26 @@ the verilogs from units3 to unit9.
 
 2. The second is performed by Kuelmann 97. 
 
-| Test      | iverilog | Kuelmann 97 |
-|:----------|---------:|------------:|
-| BDD       | Yes      | Yes         |
-| BDD_wrong | No       | No          |
-| unit1     | Yes      | N/A         |
-| unit2     | No       | N/A         |
-| unit3     | Fail     | N/A         |
-| unit4     | Fail     | N/A         |
-| unit5     | Fail     | N/A         |
-| unit7     | Fail     | N/A         |
-| unit8     | Fail     | N/A         |
-| unit9     | Fail     | N/A         |
-| unit10    | Yes      | N/A         |
-| unit11    | No       | N/A         |
-| unit12    | Yes      | N/A         |
-| unit13    | No       | N/A         |
-| unit14    | Yes      | N/A         |
-| unit15    | No       | N/A         |
-| unit16    | Yes      | N/A         |
-| unit17    | No       | N/A         |
+| Test      | iverilog | Kuelmann 97   |
+|:----------|---------:|--------------:|
+| BDD       | Yes      | Yes           |
+| BDD_wrong | No       | No            |
+| unit1     | Yes      | Out of Memory |
+| unit2     | No       | Out of Memory |
+| unit3     | Fail     | Out of Memory |
+| unit4     | Fail     | Out of Memory |
+| unit5     | Fail     | Out of Memory |
+| unit7     | Fail     | Out of Memory |
+| unit8     | Fail     | Out of Memory |
+| unit9     | Fail     | Out of Memory |
+| unit10    | Yes      | Out of Memory |
+| unit11    | No       | Out of Memory |
+| unit12    | Yes      | Out of Memory |
+| unit13    | No       | Out of Memory |
+| unit14    | Yes      | Out of Memory |
+| unit15    | No       | Out of Memory |
+| unit16    | Yes      | Out of Memory |
+| unit17    | No       | Out of Memory |
 
 Legend: 
 * Yes: The circuits are equivalent.

@@ -31,7 +31,7 @@ falses = repeat False
 embedF :: Function Int -> G -> G
 embedF (Fun op os is) g =
     case op of
-    --case traceShow ("embedF ", op, os, is , g)  op of
+    --case trace ("// embedF -> " ++ show (op, os, is) ++ "\n" ++  showGraph g)  op of
        And  -> embedAnd is o g
        Nand -> embedNand is o g
        Or   -> embedOr is o g
@@ -113,7 +113,9 @@ fixSingleNode n g =  case match n g of
     (Nothing, _)  -> error "Could not match context in fixSingleNode"
 
 -- | Cleans up graph after adding extra single nodes
-fixSingleNodes g = foldr fixSingleNode g (nodes g)
+fixSingleNodes g = --trace ("// fix singles \n" ++ showGraph g ++ "\n//fixed:\n" ++ showGraph g') g'
+    g'
+  where g' = foldr fixSingleNode g (nodes g)
 
 makeGraphV v = fixSingleNodes $ foldr embedF (embedWires v empty) (reverse $ _functions v)
 
@@ -122,25 +124,40 @@ input :: Gr a b -> Int -> Bool
 input g n = indeg g n == 0
 
 -- | Calculates the nodes without input edges
-inputs :: G -> [Int]
+inputs :: Gr a b -> [Int]
 inputs g = [n | n <- nodes g, input g n]
 
 
 -- | Renumber the nodes according solely to their inputs,
 -- | so nodes with the same inputs will have the same id
 -- | regardless of the previous.
-renameNodes :: G -> Int -> RG
-renameNodes g i = gmap renameCtxNode g
-    where renameCtxNode ([], n, (), os) = ([], n, [n], os)
-          renameCtxNode (is, n, (), os)  = (is, n+i, [n,n+i], os)
+--renameNodes :: G -> Int -> RG
+--renameNodes g i = gmap renameCtxNode g
+    --where renameCtxNode ([], n, (), os)  = ([], n, [n], os)
+          --renameCtxNode (is, n, (), os)  = (is, n+i, [n,n+i], os)
+
+
 
 -- | Joins 2 graphs into one, merging the nodes with the same inputs.
 union :: G -> G -> RG
-union g1 g2 = g'' --traceShow g'' g''
-    where g' = foldr insNode empty (S.fromList $ labNodes g1' ++ labNodes g2')
-          g'' = foldr insEdge g' (S.fromList $ labEdges g1' ++ labEdges g2')
-          g1' = renameNodes g1 0
-          g2' = renameNodes g2 (mn + 10)
-          (_, mn) = nodeRange g1'
+union g1 g2 = g'
+  --trace ("\n// union 3: \n" ++ showGraph g1 ++ "\n" ++  showGraph g2 ++ "\n" ++  showGraph g') g' --traceShow g'' g'
+    where
+          g' = mkGraph (n_g1 ++ n_g2) (e_g1 ++ e_g2)
 
+          n_g1 = map (renameNode 0) $ labNodes g1
+          e_g1 = map (renameEdge 0) $ labEdges g1
 
+          n_g2 = map (renameNode (mn + 10)) $ labNodes g2
+          e_g2 = map (renameEdge (mn + 10)) $ labEdges g2
+
+          (_, mn) = nodeRange g1
+
+          renameNode :: Int -> LNode () -> LNode [Int]
+          renameNode i (n, ()) = (rn i n, [n])
+
+          renameEdge :: Int -> LEdge Bool -> LEdge Bool
+          renameEdge i (f, t, v) = (rn i f, rn i t, v)
+
+          rn i n | elem n (inputs g2) = n
+                 | otherwise          = i + n

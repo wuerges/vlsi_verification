@@ -13,9 +13,10 @@ import qualified Data.Map as M
 equivKuelmann97 :: Checker
 equivKuelmann97 g1 g2 os1 os2 = checkExits result os1 os2
     where g = g1 `union` g2
-          (_, _, result) = trace ("// topsort " ++ show is0) $ until (checkStop os1 os2) kuelmannStep (m0, is0, g)
+          (_, _, result) = until (checkStop os1 os2) kuelmannStep (m0, is0, g)
           m0 = initialMap g is0
-          is0 = topsort g
+          is0 = bfsn (inputs g) g
+          --is0 = topsort g
 
 -- | Checks if both outputs are mapped to the same node in rg
 checkExits :: RG -> [Int] -> [Int] -> Bool
@@ -31,8 +32,8 @@ checkPair rg o1 o2 = --trace ("o1: " ++ show o1 ++ " o2:" ++ show o2 ++ " result
 
 -- | Checks if analysis should stop
 checkStop :: [Int] -> [Int] -> (M.Map BDD Int, [Int], RG) -> Bool
-checkStop os1 os2 (_, [], g) = trace (showGraph g) $ True
-checkStop os1 os2 (_, _, g)  = trace (showGraph g) $ checkExits g os1 os2
+checkStop os1 os2 (_, [], g) = True
+checkStop os1 os2 (_, _, g)  = checkExits g os1 os2
 
 -- | Performs one step of the iteration
 kuelmannStep :: (M.Map BDD Int, [Int], RG) -> (M.Map BDD Int, [Int], RG)
@@ -63,5 +64,5 @@ mergeNodes g n1 n2 = case match n2 g of
               (Just ctx1, g'') -> mergeCtxs ctx1 ctx2 & g''
               _ -> g'
         _ -> g
-    where mergeCtxs c1@(is1, n1, nv1, os1) c2@(is2, n2, nv2, os2) = trace (unlines $ map (("// " ++) . show) [c1, c2, c3]) $ c3
+    where mergeCtxs c1@(is1, n1, nv1, os1) c2@(is2, n2, nv2, os2) = c3 --trace (unlines $ map (("// " ++) . show) [c1, c2, c3]) $ c3
             where c3 = (is1, n1, nub([n2] ++ nv1 ++ nv2), nub (os1 ++ os2))
