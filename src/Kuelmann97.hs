@@ -31,13 +31,13 @@ checkPair rg o1 o2 = --trace ("o1: " ++ show o1 ++ " o2:" ++ show o2 ++ " result
 
 -- | Checks if analysis should stop
 checkStop :: [Int] -> [Int] -> (M.Map BDD Int, [Int], RG) -> Bool
-checkStop os1 os2 (_, [], g) = True
-checkStop os1 os2 (_, _, g)  = checkExits g os1 os2
+checkStop os1 os2 (_, [], g) = traceShow g $ True
+checkStop os1 os2 (_, _, g)  = traceShow g $ checkExits g os1 os2
 
 -- | Performs one step of the iteration
 kuelmannStep :: (M.Map BDD Int, [Int], RG) -> (M.Map BDD Int, [Int], RG)
 kuelmannStep (m, [], g) = (m, [] , g)
-kuelmannStep (m, (i:is), g) | memberNode i g = --trace (" WORK LIST: " ++ show (i:is)) $
+kuelmannStep (m, (i:is), g) | gelem i g = --trace (" WORK LIST: " ++ show (i:is)) $
                                 (m', is, g')
                             | otherwise      = (m, is, g)
   where (m', g') = case M.lookup bdd m of
@@ -47,8 +47,6 @@ kuelmannStep (m, (i:is), g) | memberNode i g = --trace (" WORK LIST: " ++ show (
         --is' = nub $ is ++ suc g i
         --m' = M.insertWith (\_ o -> o) bdd i m
         bdd = createBDD g i
-
-memberNode n g = maybe False (\_ -> True) (fst $ match n g)
 
 -- | Calculates the input nodes, that is, the nodes with input degree = 0
 initialInputs :: RG -> [Int]
