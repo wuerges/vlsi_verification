@@ -74,6 +74,19 @@ createBDDmemo g m n = bddReduce $ case lpre g n of
         where createBDDe (p, b) | b  = m p
                                 | not b = negateBDD $ m p
 
+
+createBDDmb_memo :: RG -> M.Map BDD -> Int -> Maybe (M.Map BDD, BDD)
+createBDDmb_memo g m n = case M.lookup n m of
+  Just bdd -> Just (m, bdd)
+  Nothing -> bddReduce $ case lpre g n of
+    [] -> initialBDD n
+    ps -> foldl1 bddAnd (map
+
+
+createBDDmb :: RG -> ((M.Map BDD, Int) ->
+
+
+
 -- | Creates a BDD for the given vertex
 -- | If the vertex is a source, the BDD is simple
 -- | if the vertex has many sorces, it must join all the sources
@@ -95,9 +108,9 @@ bddAnd One  b = b
 bddAnd b  One = b
 
 
-bddAnd b1@(B z1 v1 o1) b2@(B z2 v2 o2) | v1 > v2 = B (bddAnd z1 b2) v1 (bddAnd o1 b2)
-                                       | v1 == v2 = B (bddAnd z1 z2) v1 (bddAnd o1 o2)
-                                       | v1 < v2 = B (bddAnd z2 b1) v2 (bddAnd o2 b1)
+bddAnd b1@(B z1 v1 o1) b2@(B z2 v2 o2) | v1 > v2 = B (bddReduce $ bddAnd z1 b2) v1 (bddReduce $ bddAnd o1 b2)
+                                       | v1 == v2 = B (bddReduce $ bddAnd z1 z2) v1 (bddReduce $ bddAnd o1 o2)
+                                       | v1 < v2 = B (bddReduce $ bddAnd z2 b1) v2 (bddReduce $ bddAnd o2 b1)
 {-bddAnd b1@(B z1 v1 o1) b2@(B z2 v2 o2) | v1 > v2 = B (r1 `pseq` l1) v1 r1
                                        | v1 == v2 = B (r2 `pseq` l2) v1 r2
                                        | v1 < v2 = B (r3 `pseq` l3) v2 r3
@@ -109,12 +122,15 @@ bddAnd b1@(B z1 v1 o1) b2@(B z2 v2 o2) | v1 > v2 = B (bddAnd z1 b2) v1 (bddAnd o
         r3 = bddAnd o2 b1
 -}
 -- | Reduces a OBDD into a ORBDD
+bddReduce :: BDD -> BDD
 bddReduce Zero = Zero
 bddReduce One = One
 bddReduce b@(B z v o) | bddReduce z == bddReduce o    = z
                       | otherwise                    = b
 
--- | Checks if a node is in the graph
-memberGraph n g = case match n g of
-                    (Just _, _) -> True
-                    _           -> False
+-- | Calculates the size of a BDD
+bddSize :: BDD -> Int
+bddSize Zero = 1
+bddSize One = 1
+bddSize (B z _ o) = bddSize z + 1 + bddSize o
+

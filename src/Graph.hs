@@ -119,13 +119,23 @@ fixSingleNodes g = --trace ("// fix singles \n" ++ showGraph g ++ "\n//fixed:\n"
 
 makeGraphV v = fixSingleNodes $ foldr embedF (embedWires v empty) (reverse $ _functions v)
 
+{-
+-- | Checks if a node is an output
+outut :: Gr a b -> Int -> Bool
+outut g n = outdeg g n == 0
+
 -- | Checks if a node is an input
 input :: Gr a b -> Int -> Bool
 input g n = indeg g n == 0
+-}
 
 -- | Calculates the nodes without input edges
 inputs :: Gr a b -> [Int]
-inputs g = [n | n <- nodes g, input g n]
+inputs g = [n | n <- nodes g, indeg g n == 0]
+
+-- | Calculates the nodes without output edges
+outputs :: Gr a b -> [Int]
+outputs g = [n | n <- nodes g, outdeg g n == 0]
 
 
 -- | Renumber the nodes according solely to their inputs,
