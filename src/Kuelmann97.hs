@@ -8,18 +8,19 @@ import Data.List hiding (union)
 import Data.Graph.Inductive
 import Debug.Trace
 import qualified Data.Map as M
+import qualified Data.IntMap as I
 
 -- | Checks Equivalence of circuits based on Kuelmann97
 equivKuelmann97 :: Checker
 equivKuelmann97 g1 g2 os1 os2 = checkExits result os1 os2
     where g = g1 `union` g2
           --(_, _, result) = until (checkStop os1 os2) kuelmannStep (M.empty, is0, g)
-          (_, _, result) = until (checkStop os1 os2) kuelmannStep (m0, is0, g)
+          (_, _, _, result) = until (checkStop os1 os2) kuelmannStep (m0, I.empty, is0, g)
           --m0 = initialMap g is0
           m0 = M.empty
 
-          is0 = bfsn (inputs g) g
-          --is0 = topsort g
+          --is0 = bfsn (inputs g) g
+          is0 = topsort g
 
 initialMap :: RG -> [Int] -> M.Map BDD Int
 initialMap g is = foldl (\m i -> M.insert (createBDD g i) i m) M.empty is
@@ -38,27 +39,33 @@ checkPair rg o1 o2 = --trace ("o1: " ++ show o1 ++ " o2:" ++ show o2 ++ " result
   where result = filter (\(n, v) -> elem o1 v && elem o2 v ) (labNodes rg)
 
 -- | Checks if analysis should stop
-checkStop :: [Int] -> [Int] -> (M.Map BDD Int, [Int], RG) -> Bool
-checkStop _ _ (_, [], _) = True
-checkStop os1 os2 (_, _, g)  = checkExits g os1 os2
+checkStop :: [Int] -> [Int] -> (M.Map BDD Int, I.IntMap BDD, [Int], RG) -> Bool
+checkStop _ _ (_, _, [], _) = True
+checkStop os1 os2 (_, _, _, g)  = checkExits g os1 os2
+
+
+maybeLookup :: Ord k => Maybe k -> M.Map k v -> Maybe v
+maybeLookup mk m = case mk of
+                   Just k -> M.lookup k m
+                   Nothing -> Nothing
 
 -- | Performs one step of the iteration
-kuelmannStep :: (M.Map BDD Int, [Int], RG) -> (M.Map BDD Int, [Int], RG)
-kuelmannStep (m, [], g) = (m, [] , g)
-kuelmannStep (m, (i:is), g) = trace ("is: " ++ show (bddSize bdd) ++  " -> "++ show (length is) ++ " -> " ++ show (take 5 is) ) (m, is , g)
-{-kuelmannStep (m, (i:is), g) | gelem i g = --trace (" WORK LIST: " ++ show (i:is)) $
-                                (m', is, g')
-                            | otherwise      = (m, is, g)
-                            -}
+            --createBDDmb_memo :: RG -> M.IntMap BDD -> Int -> Maybe (M.IntMap BDD, BDD)
+kuelmannStep :: (M.Map BDD Int, I.IntMap BDD, [Int], RG) -> (M.Map BDD Int, I.IntMap BDD, [Int], RG)
+kuelmannStep (m, bdds, [], g) = (M.empty, I.empty, [] , empty)
+kuelmannStep (m, bdds, (i:is), g) = --trace ("is: " ++ show (bddSize <$> mbdd) ++  " -> "++ show (length is) ++ " -> " ++ show (take 5 is) )
+    (m', bdds', is , g')
   where
-        bdd = createBDD g i
-        {-(m', g') = case M.lookup bdd m of
-                          Just c -> (m, if c == i then g else mergeNodes g i c)
-                          Nothing -> (M.insert bdd i m, g)
-        --g' = maybe g (\c -> if c == i then g else mergeNodes g i c) (M.lookup bdd m)
-        --is' = nub $ is ++ suc g i
-        --m' = M.insertWith (\_ o -> o) bdd i m
-        -}
+        mbdd  = createBDDmb_memo g bdds i
+        bdds' = case mbdd of
+                  Just bdd -> if bddSize bdd < 50000 then I.insert i bdd bdds else bdds
+                  Nothing -> bdds
+        (m', g') = case mbdd of
+                     Just bdd -> case maybeLookup mbdd m of
+                                   Just c -> (m, if c == i then g else mergeNodes g i c)
+                                   Nothing -> (M.insert bdd i m, g)
+                     Nothing -> (m, g)
+
 -- | Removes vertices that won't reach any output from the Graph
 removeUnreach :: [Int] -> RG -> RG
 removeUnreach os g = g -- subgraph (dfs os $ grev g) g

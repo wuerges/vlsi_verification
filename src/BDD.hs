@@ -15,6 +15,15 @@ import qualified Data.IntMap as M
 data BDD = Zero | One | B BDD Int BDD
   deriving (Eq, Ord, Show)
 
+{-
+ype BDDMap = M.IntMap BDD
+
+instance Monad BDDMap where
+  return (i, bdd) = M.singleton i bdd
+
+  (Monad m) >>= f = M.
+-}
+
 --  accessor for the zero
 --zero (B z v o) = z
 --zero x = error $ "Could not access zero of " ++ show x
@@ -74,18 +83,17 @@ createBDDmemo g m n = bddReduce $ case lpre g n of
         where createBDDe (p, b) | b  = m p
                                 | not b = negateBDD $ m p
 
-
-createBDDmb_memo :: RG -> M.Map BDD -> Int -> Maybe (M.Map BDD, BDD)
+createBDDmb_memo :: RG -> M.IntMap BDD -> Int -> Maybe BDD
 createBDDmb_memo g m n = case M.lookup n m of
-  Just bdd -> Just (m, bdd)
-  Nothing -> bddReduce $ case lpre g n of
-    [] -> initialBDD n
-    ps -> foldl1 bddAnd (map
-
-
-createBDDmb :: RG -> ((M.Map BDD, Int) ->
-
-
+  Just bdd -> Just bdd
+  Nothing -> case lpre g n of
+    [] -> Just $ initialBDD n
+    ps -> if all isJust sons then Just newBDD
+                             else Nothing
+             where bddSon (p, b) | b  =             M.lookup p m
+                                 | not b = negateBDD <$> M.lookup p m
+                   sons = map bddSon ps
+                   newBDD = foldl1 bddAnd $ catMaybes sons
 
 -- | Creates a BDD for the given vertex
 -- | If the vertex is a source, the BDD is simple
