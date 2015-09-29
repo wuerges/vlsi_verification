@@ -25,7 +25,7 @@ main = do --f <- getContents
                             putStrLn $ showGraph $ g1 `union` g2
                             --hPutStrLn stderr $ "// 10 " ++ show (createBDD gu 10)
                             --hPutStrLn stderr $ "// 3  " ++ show (createBDD gu 3)
-                            hPutStrLn stderr $ show (calculateAllBDDs gu)
+                            --hPutStrLn stderr $ show (calculateAllBDDs gu)
                             where i = foldl attIndexV emptyIndex [r1, r2]
                                   v1 = verilogToInt r1 i
                                   v2 = verilogToInt r2 i

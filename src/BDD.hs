@@ -49,7 +49,11 @@ getBDDSon (p, b) | b  =             getBDD p
 
 
 recreateBDD :: RG -> Int -> BDDState (Maybe BDD)
-recreateBDD g i = do msons <- mapM getBDDSon $ lpre g i
+recreateBDD g i | indeg g i == 0 = let bdd = initialBDD i
+                                   in do putBDD i bdd
+                                         return $ Just bdd
+                | otherwise =
+                  do msons <- mapM getBDDSon $ lpre g i
                      if all isJust msons
                      then do let sons = catMaybes msons
                                 in if (sum $ map bddSize sons) > 50000
