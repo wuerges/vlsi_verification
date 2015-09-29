@@ -52,20 +52,20 @@ test-suite test-kuelmann
   type: exitcode-stdio-1.0
   main-is: TestKuelmann97.hs
   build-depends:       base >=4.8 && <4.9, parsec, containers >=0.5 && <0.6, fgl >=5.5 && <5.6,
-                       fgl-visualize >=0.1 && <0.2, memoize, parallel, HUnit
+                       fgl-visualize >=0.1 && <0.2, memoize, parallel, HUnit, mtl
   hs-source-dirs:      src
   default-language:    Haskell2010
 
 executable Kuelmann97
   build-depends:       base >=4.8 && <4.9, parsec, containers >=0.5 && <0.6, fgl >=5.5 && <5.6,
-                       fgl-visualize >=0.1 && <0.2, memoize, parallel
+                       fgl-visualize >=0.1 && <0.2, memoize, parallel, mtl
   hs-source-dirs:      src
   main-is: Main.hs
   default-language:    Haskell2010
 
 library
   build-depends:       base >=4.8 && <4.9, parsec, containers >=0.5 && <0.6, fgl >=5.5 && <5.6,
-                       fgl-visualize >=0.1 && <0.2, memoize, parallel
+                       fgl-visualize >=0.1 && <0.2, memoize, parallel, mtl
   exposed-modules:     TestEquiv, Verilog, TestParser, VerParser, Graph, BDD, Equivalence, Algo, Kuelmann97
   hs-source-dirs:      src
   default-language:    Haskell2010

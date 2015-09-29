@@ -11,6 +11,8 @@ import Debug.Trace
 import qualified Data.Map as M
 import qualified Data.IntMap as I
 
+import qualified Data.Set as S
+
 -- | Checks Equivalence of circuits based on Kuelmann97
 equivKuelmann97 :: Checker
 equivKuelmann97 g1 g2 os1 os2 = checkExits result os1 os2
@@ -24,7 +26,8 @@ equivKuelmann97 g1 g2 os1 os2 = checkExits result os1 os2
           is0 = mybfs g
 
 equivKuelmann97M :: Checker
-equivKuelmann97M g1 g2 os1 os2 = trace (showGraph g') $ checkExits g' os1 os2
+equivKuelmann97M g1 g2 os1 os2 = --trace (showGraph g') $
+                        checkExits g' os1 os2
   where g = g1 `union` g2
         todo = mybfs g
         g' = snd . snd $ evalState (runStateT (mapM_ kuelmannStep3 todo) (M.empty, g)) I.empty
@@ -81,7 +84,7 @@ kuelmannStep2 :: (M.Map BDD Int, I.IntMap BDD, [Int], RG) -> (M.Map BDD Int, I.I
 kuelmannStep2 (m, bdds, [], g) = (M.empty, I.empty, [] , empty)
 kuelmannStep2 (m, bdds, (i:is), g) =
   if gelem i g  then
-                trace ("is: " ++ show (mbdd) ++  " -> "++ show (length is) ++ " -> " ++ show (length $ nodes g) )
+                --trace ("is: " ++ show (mbdd) ++  " -> "++ show (length is) ++ " -> " ++ show (length $ nodes g) )
                 (m', bdds'', is, g')
                 else (m, bdds, is, g)
   where
@@ -124,23 +127,26 @@ deleteNode bdd = do (m, g) <- get
                     put (M.delete bdd m, g)
 
 
+
+
 -- | Monadic version of a step in the kuelmann algorithm
 -- | The problem with this version is that it excludes the possibility of a group of 3 nodes being equivalent to each other, since it will only mark
 -- | the first 2 as equivalent, merge the next ones and doom the rest of the process
 kuelmannStep3 :: Int -> KuelmannState ()
 kuelmannStep3 i = do
   g <- getGraph
-  if not $ gelem i g
+  if S.null $  S.fromList (dfs [i] g) `S.intersection` S.fromList (outputs g)
      then return ()
      else do mbdd <- lift (recreateBDD g i)
              case mbdd of
                Nothing -> return ()
                Just bdd -> do mc <- checkExists bdd
                               case mc of
-                                Nothing -> trace ("\n\n//new " ++ show i ++ " -- > " ++ show bdd) updateNode bdd i
-                                Just c -> let g' = removeUnreach (outputs g) (mergeNodes2 g i c)
+                                Nothing -> --trace ("\n\n//new " ++ show i ++ " -- > " ++ show bdd)
+                                           updateNode bdd i
+                                Just c -> let g' = mergeNodes2 g i c --removeUnreach (outputs g) (mergeNodes2 g i c)
                                           in do newBDDm <- lift $ recreateBDD g' i
-                                                putGraph (trace ("\n\n//merged " ++ show i ++ " + " ++  show c ++ " --> " ++ show bdd ++ " --> " ++ show newBDDm ++ "\n" ++ showGraph g') g')
+                                                putGraph g' --(trace ("\n\n//merged " ++ show i ++ " + " ++  show c ++ " --> " ++ show bdd ++ " --> " ++ show newBDDm ++ "\n" ++ showGraph g') g')
                                                 case newBDDm of
                                                   Just newBDD -> do deleteNode bdd
                                                                     updateNode newBDD i
