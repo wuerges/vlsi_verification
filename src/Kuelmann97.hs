@@ -15,12 +15,13 @@ equivKuelmann97 :: Checker
 equivKuelmann97 g1 g2 os1 os2 = checkExits result os1 os2
     where g = g1 `union` g2
           --(_, _, result) = until (checkStop os1 os2) kuelmannStep (M.empty, is0, g)
-          (_, _, _, result) = until (checkStop os1 os2) kuelmannStep (m0, I.empty, is0, g)
+          (_, _, _, result) = until (checkStop os1 os2) kuelmannStep2 (m0, I.empty, is0, g)
           --m0 = initialMap g is0
           m0 = M.empty
 
           --is0 = bfsn (inputs g) g
-          is0 = topsort g
+          --is0 = topsort g
+          is0 = mybfs g
 
 initialMap :: RG -> [Int] -> M.Map BDD Int
 initialMap g is = foldl (\m i -> M.insert (createBDD g i) i m) M.empty is
@@ -51,24 +52,53 @@ maybeLookup mk m = case mk of
 
 -- | Performs one step of the iteration
             --createBDDmb_memo :: RG -> M.IntMap BDD -> Int -> Maybe (M.IntMap BDD, BDD)
+
 kuelmannStep :: (M.Map BDD Int, I.IntMap BDD, [Int], RG) -> (M.Map BDD Int, I.IntMap BDD, [Int], RG)
 kuelmannStep (m, bdds, [], g) = (M.empty, I.empty, [] , empty)
-kuelmannStep (m, bdds, (i:is), g) = --trace ("is: " ++ show (bddSize <$> mbdd) ++  " -> "++ show (length is) ++ " -> " ++ show (take 5 is) )
-    (m', bdds', is , g')
+kuelmannStep (m, bdds, (i:is), g) =
+  if gelem i g  then
+                --trace ("is: " ++ show (bddSize <$> mbdd) ++  " -> "++ show (length is) ++ " -> " ++ show (take 5 is) )
+                (m', bdds', is, g')
+                else (m, bdds, is, g)
   where
         mbdd  = createBDDmb_memo g bdds i
         bdds' = case mbdd of
-                  Just bdd -> if bddSize bdd < 50000 then I.insert i bdd bdds else bdds
+                  Just bdd -> if bddSize bdd < 5000 then I.insert i bdd bdds else bdds
                   Nothing -> bdds
         (m', g') = case mbdd of
-                     Just bdd -> case maybeLookup mbdd m of
-                                   Just c -> (m, if c == i then g else mergeNodes g i c)
+                     Just bdd -> case M.lookup bdd m of
+                                   Just c -> (m, if c == i then g else removeUnreach (outputs g) (mergeNodes g i c))
                                    Nothing -> (M.insert bdd i m, g)
                      Nothing -> (m, g)
 
+kuelmannStep2 :: (M.Map BDD Int, I.IntMap BDD, [Int], RG) -> (M.Map BDD Int, I.IntMap BDD, [Int], RG)
+kuelmannStep2 (m, bdds, [], g) = (M.empty, I.empty, [] , empty)
+kuelmannStep2 (m, bdds, (i:is), g) =
+  if gelem i g  then
+                trace ("is: " ++ show (mbdd) ++  " -> "++ show (length is) ++ " -> " ++ show (length $ nodes g) )
+                (m', bdds'', is, g')
+                else (m, bdds, is, g)
+  where
+        mbdd  = createBDDmb_memo g bdds i
+        bdds' = case mbdd of
+                  Just bdd -> if bddSize bdd < 5000 then I.insert i bdd bdds else bdds
+                  Nothing -> bdds
+
+        (m', bdds'', g') = case mbdd of
+                     Just bdd -> case M.lookup bdd m of
+                                   Just c -> if c == i then (m, bdds', g) else mergedTriple
+                                                where
+                                                  mergedG = trace ("Merged " ++ show (c, i) ++ "!!") $ removeUnreach (outputs g) (mergeNodes2 g i c)
+                                                  mergedBDD = initialBDD c
+                                                  mergedTriple = (M.insert mergedBDD c m, bdds', mergedG)
+                                                  --mergedTriple = (M.insert mergedBDD i m, I.insert c mergedBDD $ I.insert i mergedBDD bdds', mergedG)
+                                   Nothing -> (M.insert bdd i m, bdds', g)
+                     Nothing -> (m, bdds', g)
+
 -- | Removes vertices that won't reach any output from the Graph
 removeUnreach :: [Int] -> RG -> RG
-removeUnreach os g = g -- subgraph (dfs os $ grev g) g
+removeUnreach os g = g' --trace ("// " ++ show os ++ " " ++ show (dfs os $ grev g) ++ "\n// before \n" ++ showGraph g ++ "\n// after \n" ++ showGraph g' ) g'
+  where g' = subgraph (dfs os $ grev g) g
 
 -- | Merges 2 nodes in the graph. The first one is mantained, the second one is removed
 -- | and all its sucessors are moved to the first one.
@@ -80,4 +110,14 @@ mergeNodes g n1 n2 = case match n2 g of
         _ -> g
     where mergeCtxs (is1, _, nv1, os1) (_, _, nv2, os2) = --c3 --trace (unlines $ map (("// " ++) . show) [c1, c2, c3]) $ c3
               (is1, n1, nub([n2] ++ nv1 ++ nv2), nub (os1 ++ os2))
+            --where c3 =
+
+mergeNodes2 :: RG -> Int -> Int -> RG
+mergeNodes2 g n1 n2 = case match n2 g of
+        (Just ctx2, g') -> case match n1 g' of
+              (Just ctx1, g'') -> mergeCtxs ctx1 ctx2 & g''
+              _ -> g'
+        _ -> g
+    where mergeCtxs (is1, _, nv1, os1) (_, _, nv2, os2) = --c3 --trace (unlines $ map (("// " ++) . show) [c1, c2, c3]) $ c3
+              ([], n1, nub([n2] ++ nv1 ++ nv2), nub (os1 ++ os2))
             --where c3 =

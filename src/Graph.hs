@@ -3,6 +3,7 @@ module Graph where
 import Verilog
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Dot
+import Data.List
 import Control.Arrow
 import Debug.Trace
 import qualified Data.Set as S
@@ -171,3 +172,10 @@ union g1 g2 = g'
 
           rn i n | elem n (inputs g2) = n
                  | otherwise          = i + n
+
+
+mybfs :: Gr a b -> [Int]
+mybfs g | isEmpty g = []
+        | otherwise = inputs g ++ (mybfs $ delNodes (inputs g) g)
+
+

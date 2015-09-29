@@ -15,9 +15,11 @@ import qualified Data.IntMap as M
 data BDD = Zero | One | B BDD Int BDD
   deriving (Eq, Ord, Show)
 
-{-
-ype BDDMap = M.IntMap BDD
+--type BDDM a = MaybeT (State (M.Map BDD)) a
 
+
+
+{-
 instance Monad BDDMap where
   return (i, bdd) = M.singleton i bdd
 

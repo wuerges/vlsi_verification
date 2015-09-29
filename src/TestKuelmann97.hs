@@ -13,7 +13,7 @@ import System.Timeout
 second = 1000000
 
 filesCorrect = ["BDD", "unit1", "unit10", "unit12", "unit14", "unit16"]
-filesWrong   = ["BDD_wrong", "unit2", "unit11", "unit13", "unit15", "unit17"]
+filesWrong   = [] -- ["BDD_wrong", "unit2", "unit11", "unit13", "unit15", "unit17"]
 
 makeTest e f = TestCase (do putStrLn $ " Test: " ++ f
                             p1 <- parseVerilog $ "tests/"++f++"/in_1.v"
