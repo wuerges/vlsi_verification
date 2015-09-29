@@ -21,7 +21,7 @@ makeTest e f = TestCase (do putStrLn $ " Test: " ++ f
                             case rights [p1, p2] of
                               [r1, r2] -> do
                                 --a <- timeout (120 * second) (return $! equiv equivKuelmann97M r1 r2)
-                                a <- Just $ equiv equivKuelmann97M r1 r2
+                                a <- return $ Just $ equiv equivKuelmann97M r1 r2
                                 case a of
                                   Just r -> assertEqual ("Kuelmann97 test: \"" ++ f ++ "\"") e r
                                   Nothing -> assertFailure $ "Kuelmann97 test: " ++ f ++ " timed out"
