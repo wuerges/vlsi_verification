@@ -16,15 +16,12 @@ equivKuelmann97 g1 g2 os1 os2 = checkExits result os1 os2
     where g = g1 `union` g2
           --(_, _, result) = until (checkStop os1 os2) kuelmannStep (M.empty, is0, g)
           (_, _, _, result) = until (checkStop os1 os2) kuelmannStep2 (m0, I.empty, is0, g)
-          --m0 = initialMap g is0
           m0 = M.empty
 
           --is0 = bfsn (inputs g) g
           --is0 = topsort g
           is0 = mybfs g
 
-initialMap :: RG -> [Int] -> M.Map BDD Int
-initialMap g is = foldl (\m i -> M.insert (createBDD g i) i m) M.empty is
 
 
 -- | Checks if both outputs are mapped to the same node in rg

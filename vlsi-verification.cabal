@@ -66,7 +66,7 @@ executable Kuelmann97
 library
   build-depends:       base >=4.8 && <4.9, parsec, containers >=0.5 && <0.6, fgl >=5.5 && <5.6,
                        fgl-visualize >=0.1 && <0.2, memoize, parallel
-  exposed-modules:     TestEquiv, Verilog, TestParser, VerParser, Graph, BDD, Equivalence, Algo
+  exposed-modules:     TestEquiv, Verilog, TestParser, VerParser, Graph, BDD, Equivalence, Algo, Kuelmann97
   hs-source-dirs:      src
   default-language:    Haskell2010
   

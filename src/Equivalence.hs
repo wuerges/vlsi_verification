@@ -35,8 +35,9 @@ equivG _ _ _ _ = False
 
 -- | Checks Equivalence by calculating BDDs of all outputs.
 -- | Run time is probably exponential.
-equivCompleteBDD :: Checker
+{-equivCompleteBDD :: Checker
 equivCompleteBDD g1 g2 os1 os2 = map (createBDD rg1) os1 == map (createBDD rg2) os2
   where rg1 = g1 `union` empty
         rg2 = g2 `union` empty
 
+-}
