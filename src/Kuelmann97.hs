@@ -5,6 +5,7 @@ import Graph
 import BDD
 
 import Control.Monad.State
+
 import Data.List hiding (union)
 import Data.Graph.Inductive
 import Debug.Trace
@@ -14,23 +15,12 @@ import qualified Data.IntMap as I
 import qualified Data.Set as S
 
 -- | Checks Equivalence of circuits based on Kuelmann97
-equivKuelmann97 :: Checker
-equivKuelmann97 g1 g2 os1 os2 = checkExits result os1 os2
-    where g = g1 `union` g2
-          --(_, _, result) = until (checkStop os1 os2) kuelmannStep (M.empty, is0, g)
-          (_, _, _, result) = until (checkStop os1 os2) kuelmannStep2 (m0, I.empty, is0, g)
-          m0 = M.empty
-
-          --is0 = bfsn (inputs g) g
-          --is0 = topsort g
-          is0 = mybfs g
-
 equivKuelmann97M :: Checker
 equivKuelmann97M g1 g2 os1 os2 = --trace (showGraph g') $
                         checkExits g' os1 os2
   where g = g1 `union` g2
         todo = mybfs g
-        g' = snd . snd $ evalState (runStateT (mapM_ kuelmannStep3 todo) (M.empty, g)) I.empty
+        g' = snd . snd $ evalState (runStateT (mapM_ kuelmannStep todo) (M.empty, g)) I.empty
 
 
 
@@ -60,50 +50,6 @@ maybeLookup mk m = case mk of
 -- | Performs one step of the iteration
             --createBDDmb_memo :: RG -> M.IntMap BDD -> Int -> Maybe (M.IntMap BDD, BDD)
 
-kuelmannStep :: (M.Map BDD Int, I.IntMap BDD, [Int], RG) -> (M.Map BDD Int, I.IntMap BDD, [Int], RG)
-kuelmannStep (m, bdds, [], g) = (M.empty, I.empty, [] , empty)
-kuelmannStep (m, bdds, (i:is), g) =
-  if gelem i g  then
-                --trace ("is: " ++ show (bddSize <$> mbdd) ++  " -> "++ show (length is) ++ " -> " ++ show (take 5 is) )
-                (m', bdds', is, g')
-                else (m, bdds, is, g)
-  where
-        mbdd  = createBDDmb_memo g bdds i
-        bdds' = case mbdd of
-                  Just bdd -> if bddSize bdd < 5000 then I.insert i bdd bdds else bdds
-                  Nothing -> bdds
-        (m', g') = case mbdd of
-                     Just bdd -> case M.lookup bdd m of
-                                   Just c -> (m, if c == i then g else removeUnreach (outputs g) (mergeNodes g i c))
-                                   Nothing -> (M.insert bdd i m, g)
-                     Nothing -> (m, g)
-
-
-
-kuelmannStep2 :: (M.Map BDD Int, I.IntMap BDD, [Int], RG) -> (M.Map BDD Int, I.IntMap BDD, [Int], RG)
-kuelmannStep2 (m, bdds, [], g) = (M.empty, I.empty, [] , empty)
-kuelmannStep2 (m, bdds, (i:is), g) =
-  if gelem i g  then
-                --trace ("is: " ++ show (mbdd) ++  " -> "++ show (length is) ++ " -> " ++ show (length $ nodes g) )
-                (m', bdds'', is, g')
-                else (m, bdds, is, g)
-  where
-        mbdd  = createBDDmb_memo g bdds i
-        bdds' = case mbdd of
-                  Just bdd -> if bddSize bdd < 5000 then I.insert i bdd bdds else bdds
-                  Nothing -> bdds
-
-        (m', bdds'', g') = case mbdd of
-                     Just bdd -> case M.lookup bdd m of
-                                   Just c -> if c == i then (m, bdds', g) else mergedTriple
-                                                where
-                                                  mergedG = trace ("Merged " ++ show (c, i) ++ "!!") $ removeUnreach (outputs g) (mergeNodes2 g i c)
-                                                  mergedBDD = initialBDD c
-                                                  mergedTriple = (M.insert mergedBDD c m, bdds', mergedG)
-                                                  --mergedTriple = (M.insert mergedBDD i m, I.insert c mergedBDD $ I.insert i mergedBDD bdds', mergedG)
-                                   Nothing -> (M.insert bdd i m, bdds', g)
-                     Nothing -> (m, bdds', g)
-
 type KuelmannState a = StateT (M.Map BDD Int, RG) (State (I.IntMap BDD)) a
 
 
@@ -127,31 +73,35 @@ deleteNode bdd = do (m, g) <- get
                     put (M.delete bdd m, g)
 
 
-
-
 -- | Monadic version of a step in the kuelmann algorithm
 -- | The problem with this version is that it excludes the possibility
 -- | of a group of 3 nodes being equivalent to each other, since it will only mark
 -- | the first 2 as equivalent, merge the next ones and doom the rest of the process.
-kuelmannStep3 :: Int -> KuelmannState ()
-kuelmannStep3 i = do
+kuelmannStep :: Int -> KuelmannState ()
+kuelmannStep i = do
   g <- getGraph
+  --  Check if the node in question is in the graph and reaches any output
   if S.null $  S.fromList (dfs [i] g) `S.intersection` S.fromList (outputs g)
      then return ()
+     -- Recreates the BDD for that node
      else do mbdd <- lift (recreateBDD g i)
              case mbdd of
-               Nothing -> return ()
+               -- If the bdd was not small enough, ignore this node
+               Nothing  -> return ()
+               -- If the bdd was created, check if there is an equivalent node
                Just bdd -> do mc <- checkExists bdd
                               case mc of
+                                -- If there was no equivalent node, just add the bdd to the heap
                                 Nothing -> updateNode bdd i
-                                Just c -> let g' = mergeNodes2 g i c
-                                          in do newBDDm <- lift $ recreateBDD g' i
-                                                putGraph g'
-                                                case newBDDm of
-                                                  Just newBDD -> do deleteNode bdd
-                                                                    updateNode newBDD i
-                                                                    lift (putBDD i newBDD)
-                                                  Nothing -> return ()
+                                -- If there an equivalent node, merge the nodes in the graph
+                                Just c  -> let g' = mergeNodes2 g i c
+                                           in do newBDDm <- lift $ recreateBDD g' i
+                                                 putGraph g'
+                                                 case newBDDm of
+                                                   Just newBDD -> do deleteNode bdd
+                                                                     updateNode newBDD i
+                                                                     lift (putBDD i newBDD)
+                                                   Nothing -> return ()
 
 
 
