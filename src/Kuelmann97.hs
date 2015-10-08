@@ -78,7 +78,7 @@ deleteNode bdd = do (m, g) <- get
 -- | of a group of 3 nodes being equivalent to each other, since it will only mark
 -- | the first 2 as equivalent, merge the next ones and doom the rest of the process.
 kuelmannStep :: Int -> KuelmannState ()
-kuelmannStep i = do
+kuelmannStep i =  do
   g <- getGraph
   --  Check if the node in question is in the graph and reaches any output
   if S.null $  S.fromList (dfs [i] g) `S.intersection` S.fromList (outputs g)
@@ -89,24 +89,30 @@ kuelmannStep i = do
                -- If the bdd was not small enough, ignore this node
                Nothing  -> return ()
                -- If the bdd was created, check if there is an equivalent node
-               Just bdd -> do mc <- checkExists bdd
-                              case mc of
+               Just bdd -> do mc    <- checkExists             bdd
+                              mnotc <- checkExists $ negateBDD bdd
+                              updateNode bdd i
+                              case (mc, mnotc) of
                                 -- If there was no equivalent node, just add the bdd to the heap
-                                Nothing -> updateNode bdd i
                                 -- If there an equivalent node, merge the nodes in the graph
-                                Just c  -> let g' = mergeNodes2 g i c
-                                           in do newBDDm <- lift $ recreateBDD g' i
-                                                 putGraph g'
-                                                 case newBDDm of
-                                                   Just newBDD -> do deleteNode bdd
-                                                                     updateNode newBDD i
-                                                                     lift (putBDD i newBDD)
-                                                   Nothing -> return ()
+                                (Just c, _)  -> mergeNodesM True i c
+                                                      {-let g' = mergeNodes True g i c
+                                                      in do newBDDm <- lift $ recreateBDD g' i
+                                                            putGraph g'
+                                                            case newBDDm of
+                                                              Just newBDD -> do deleteNode bdd
+                                                                                updateNode newBDD i
+                                                                                lift (putBDD i newBDD)
+                                                              Nothing -> return ()
+                                                              -}
+                                -- If there a not-equivalent node, merge the nodes in the graph
+                                (Nothing, Just nc) -> mergeNodesM False i nc
+                                _ -> return ()
 
-
-
-
-
+mergeNodesM :: Bool -> Int -> Int -> KuelmannState ()
+mergeNodesM b n1 n2 =
+  do g <- getGraph
+     putGraph $  mergeNodes b g n1 n2
 
 -- | Removes vertices that won't reach any output from the Graph
 removeUnreach :: [Int] -> RG -> RG
@@ -115,22 +121,22 @@ removeUnreach os g = g' --trace ("// " ++ show os ++ " " ++ show (dfs os $ grev 
 
 -- | Merges 2 nodes in the graph. The first one is mantained, the second one is removed
 -- | and all its sucessors are moved to the first one.
-mergeNodes :: RG -> Int -> Int -> RG
-mergeNodes g n1 n2 = case match n2 g of
-  (Just ctx2, g') -> case match n1 g' of
-     (Just ctx1, g'') -> mergeCtxs ctx1 ctx2 & g''
-     _ -> g'
-  _ -> g
-  where mergeCtxs (is1, _, nv1, os1) (_, _, nv2, os2) = --c3 --trace (unlines $ map (("// " ++) . show) [c1, c2, c3]) $ c3
-              (is1, n1, nub([n2] ++ nv1 ++ nv2), nub (os1 ++ os2))
-            --where c3 =
-
-mergeNodes2 :: RG -> Int -> Int -> RG
-mergeNodes2 g n1 n2 = case match n2 g of
-        (Just ctx2, g') -> case match n1 g' of
-              (Just ctx1, g'') -> mergeCtxs ctx1 ctx2 & g''
-              _ -> g'
-        _ -> g
-    where mergeCtxs (is1, _, nv1, os1) (_, _, nv2, os2) = --c3 --trace (unlines $ map (("// " ++) . show) [c1, c2, c3]) $ c3
-              (is1, n1, nub([n2] ++ nv1 ++ nv2), nub (os1 ++ os2))
-            --where c3 =
+mergeNodes :: Bool -> RG -> Int -> Int -> RG
+mergeNodes b g n1 n2 | n1 == n2 = error "Nodes should be different"
+                     | n1 /= n2 = r -- trace ("// Merging nodes: " ++ show (n1, n2) ++ "\n" ++ showGraph g ++ showGraph r) $ r
+  where
+        r = if b then mergeCtxs ctx1 ctx2             & (stripCtx ctx2 & g'')
+                 else mergeCtxs ctx1 (negateCtx ctx2) & (stripCtx ctx2 & g'')
+        (Just ctx1, g')  = match n1 g
+        (Just ctx2, g'') = match n2 g'
+        {-(ctx1, ctx2, g'') = case match n1 g of
+                              (Nothing, _) ->     error "//Should have matched ctx1"
+                              (Just ctx1_, g') -> case match n2 g' of
+                                (Nothing, _) -> error $ "//Should have matched ctx2: "  ++ (show n2) ++ "\n" ++ showGraph g
+                                (Just ctx2_, g'') -> (ctx1_, ctx2_, g'')
+                                -}
+        stripCtx (is, n, v, os) = (is, n, v, [])
+        mergeCtxs (is1, _, nv1, os1) (_, _, nv2, os2) =
+          (is1, n1, nub([n2] ++ nv1 ++ nv2), nub (os1 ++ os2))
+    -- | Merges 2 contexts, removing the second context
+    --mergeCtxs :: Context [Node] Bool -> Context [Node] Bool -> Context [Node] Bool
