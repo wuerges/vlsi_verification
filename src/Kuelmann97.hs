@@ -93,21 +93,12 @@ kuelmannStep i =  do
                               mnotc <- checkExists $ negateBDD bdd
                               updateNode bdd i
                               case (mc, mnotc) of
-                                -- If there was no equivalent node, just add the bdd to the heap
                                 -- If there an equivalent node, merge the nodes in the graph
-                                (Just c, _)  -> mergeNodesM True i c
-                                                      {-let g' = mergeNodes True g i c
-                                                      in do newBDDm <- lift $ recreateBDD g' i
-                                                            putGraph g'
-                                                            case newBDDm of
-                                                              Just newBDD -> do deleteNode bdd
-                                                                                updateNode newBDD i
-                                                                                lift (putBDD i newBDD)
-                                                              Nothing -> return ()
-                                                              -}
+                                (Just c, _)        -> mergeNodesM True i c
                                 -- If there a not-equivalent node, merge the nodes in the graph
                                 (Nothing, Just nc) -> mergeNodesM False i nc
-                                _ -> return ()
+                                -- If there was no equivalent node, just add the bdd to the heap
+                                _                  -> return ()
 
 mergeNodesM :: Bool -> Int -> Int -> KuelmannState ()
 mergeNodesM b n1 n2 =
