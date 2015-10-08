@@ -130,8 +130,9 @@ deleteNode bdd = do (m, g) <- get
 
 
 -- | Monadic version of a step in the kuelmann algorithm
--- | The problem with this version is that it excludes the possibility of a group of 3 nodes being equivalent to each other, since it will only mark
--- | the first 2 as equivalent, merge the next ones and doom the rest of the process
+-- | The problem with this version is that it excludes the possibility
+-- | of a group of 3 nodes being equivalent to each other, since it will only mark
+-- | the first 2 as equivalent, merge the next ones and doom the rest of the process.
 kuelmannStep3 :: Int -> KuelmannState ()
 kuelmannStep3 i = do
   g <- getGraph
@@ -142,11 +143,10 @@ kuelmannStep3 i = do
                Nothing -> return ()
                Just bdd -> do mc <- checkExists bdd
                               case mc of
-                                Nothing -> --trace ("\n\n//new " ++ show i ++ " -- > " ++ show bdd)
-                                           updateNode bdd i
-                                Just c -> let g' = mergeNodes2 g i c --removeUnreach (outputs g) (mergeNodes2 g i c)
+                                Nothing -> updateNode bdd i
+                                Just c -> let g' = mergeNodes2 g i c
                                           in do newBDDm <- lift $ recreateBDD g' i
-                                                putGraph g' --(trace ("\n\n//merged " ++ show i ++ " + " ++  show c ++ " --> " ++ show bdd ++ " --> " ++ show newBDDm ++ "\n" ++ showGraph g') g')
+                                                putGraph g'
                                                 case newBDDm of
                                                   Just newBDD -> do deleteNode bdd
                                                                     updateNode newBDD i
