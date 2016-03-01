@@ -1,12 +1,8 @@
-module TestEquiv where
-
-import VerParser
-import Algo
-import Kuelmann97
+module Main where
 
 
+import Lib
 import System.Environment
-import Equivalence
 import Data.Either
 
 main :: IO ()

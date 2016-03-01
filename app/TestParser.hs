@@ -1,13 +1,8 @@
-module TestParser where
+module Main where
 
-import VerParser
-import Verilog
-import Graph
-import Algo
-import BDD
+import Lib
 
 import System.Environment
-import Data.Graph.Inductive
 import System.IO
 import Control.Monad
 import Data.Either
