@@ -20,7 +20,7 @@ makeTest e f = TestCase (do putStrLn $ " Test: " ++ f
                             p2 <- parseVerilog $ "tests/"++f++"/in_2.v"
                             case rights [p1, p2] of
                               [r1, r2] -> do
-                                a <- timeout (600 * second) (return $! equiv equivKuelmann97M r1 r2)
+                                a <- timeout (10 ^ 6) $ return $! equiv equivKuelmann97M r1 r2
                                 --a <- return $ Just $ equiv equivKuelmann97M r1 r2
                                 case a of
                                   Just r -> assertEqual ("Kuelmann97 test: \"" ++ f ++ "\"") e r

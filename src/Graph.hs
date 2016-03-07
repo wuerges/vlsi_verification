@@ -13,7 +13,7 @@ import qualified Data.Map as M
 type G = Gr () Bool
 type RG = Gr [Int] Bool
 
--- | Corverts a graph to a GraphViz format
+-- | Converts a graph to a GraphViz format
 showGraph g = showDot $ fglToDot $ gmap (\(is, n, _, os) -> (is, n, show n, os)) g
 
 
