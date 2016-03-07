@@ -16,7 +16,6 @@ type RG = Gr [Int] Bool
 -- | Converts a graph to a GraphViz format
 showGraph g = showDot $ fglToDot $ gmap (\(is, n, _, os) -> (is, n, show n, os)) g
 
-
 -- | Creates all the nodes of the Graph
 wireNodes :: Verilog Int -> [Context () Bool]
 wireNodes v = [([], n, (), []) | n <- names v]

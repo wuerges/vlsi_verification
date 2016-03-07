@@ -1,20 +1,34 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Verilog where
 
 import qualified Data.Map as M
 import Data.Maybe
+import Control.Monad.State
 
 data Function a = Fun { _op  :: Op
                       , _out :: [a]
                       , _in  :: [a] }
     deriving (Ord, Eq, Show)
 
-data Index = Index { _seed :: Int
-                   , _map   :: M.Map String Int }
+type IdxState a = State (Int, M.Map String Int) a
 
-emptyIndex = Index 0 M.empty
+nextIdx :: String -> IdxState Int
+nextIdx name = do
+  (s, idx) <- get
+  case M.lookup name idx of
+    Just x  -> return x
+    Nothing -> do put (s', M.insert name s' idx)
+                  return s'
+                    where s' = s + 1
 
-lookIdx :: Index -> String -> Int
-lookIdx i s = fromMaybe (error $ "Should have found " ++ s ++ "in Map!") (M.lookup s $ _map i)
+
+runIndex :: IdxState a -> a
+runIndex = (flip evalState) (0, M.empty)
+
+
+--lookIdx :: Index -> String -> Int
+--lookIdx i s = fromMaybe (error $ "Should have found " ++ s ++ "in Map!") (M.lookup s $ _map i)
 
 data Op = And
         | Or
@@ -32,11 +46,12 @@ makeFunction Not ps = Fun Not (init ps) [last ps]
 makeFunction op (p:ps) = Fun op [p] ps
 makeFunction _ _      = error "Function must have at least 1 input and 1 output wire"
 
-functionToInt :: Index -> Function String -> Function Int
-functionToInt idx f = f { _out = map (lookIdx idx) $ _out f
-                        , _in  = map (lookIdx idx) $ _in f
-                        }
 
+functionToInt :: Function String -> IdxState (Function Int)
+functionToInt f@(Fun{..}) = do
+  outs  <- mapM nextIdx _out :: IdxState [Int]
+  ins   <- mapM nextIdx _in
+  return $ f { _out = outs, _in = ins }
 
 data Verilog a = Verilog { _inputs :: [a]
                          , _outputs :: [a]
@@ -47,19 +62,16 @@ data Verilog a = Verilog { _inputs :: [a]
 names :: Verilog a -> [a]
 names v = _inputs v ++ _outputs v ++ concatMap namesFun (_functions v)
 
-attIndex :: Index -> String -> Index
-attIndex i@(Index s m) ns = case M.lookup ns m of
-                            Just x -> i
-                            Nothing -> Index (s+1) (M.insert ns s m)
 
-attIndexV :: Index -> Verilog String -> Index
-attIndexV i v = foldl attIndex i $ names v
+verilogToInt :: Verilog String -> IdxState (Verilog Int)
+verilogToInt v@(Verilog{..}) = do
+  nis <- mapM nextIdx _inputs
+  nos <- mapM nextIdx _outputs
+  nfs <- mapM functionToInt _functions
+  return $ Verilog nis nos nfs
 
-verilogToInt :: Verilog String -> Index -> Verilog Int
-verilogToInt v idx = Verilog nis nos nfs
-    where nis = map (lookIdx idx)       $ _inputs    v
-          nos = map (lookIdx idx)       $ _outputs   v
-          nfs = map (functionToInt idx) $ _functions v
+
+lookIdx = undefined
 
 namesFun :: Function a -> [a]
 namesFun f = _out f ++ _in f
