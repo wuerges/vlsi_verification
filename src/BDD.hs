@@ -8,7 +8,6 @@ import Data.Graph.Inductive
 import Control.Arrow
 import Debug.Trace
 import Data.Maybe
--- import Data.Function.Memoize
 import qualified Data.IntMap as M
 import Control.Monad.State
 
