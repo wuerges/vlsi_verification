@@ -25,7 +25,8 @@ type Checker = G -> G -> [Int] -> [Int] -> Bool
 -- | Checks the equivalence between 2 verilog circuits
 equiv :: Checker -> Verilog String -> Verilog String -> Bool
 equiv f r1 r2 = f (makeGraphV v1) (makeGraphV v2) (_outputs v1) (_outputs v2)
-    where (v1, v2) = runIndex $ (verilogToInt >>> verilogToInt) (r1, r2)
+    where [v1, v2] = runIndex $ mapM verilogToInt [r1, r2]
+
 -- | Stub for a checker. Always returns False
 equivG :: Checker
 equivG _ _ _ _ = False

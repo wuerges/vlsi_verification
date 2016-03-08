@@ -15,13 +15,11 @@ main = do --f <- getContents
             [r1, r2]  -> do --print "ok"
                             --putStrLn $ showGraph g1
                             --putStrLn $ showGraph g2
-                            putStrLn $ showGraph $ g1 `union` g2
+                            putStrLn $ showGraph $ gu
                             --hPutStrLn stderr $ "// 10 " ++ show (createBDD gu 10)
                             --hPutStrLn stderr $ "// 3  " ++ show (createBDD gu 3)
                             --hPutStrLn stderr $ show (calculateAllBDDs gu)
-                            where i = foldl attIndexV emptyIndex [r1, r2]
-                                  v1 = verilogToInt r1 i
-                                  v2 = verilogToInt r2 i
+                            where [v1, v2] = runIndex $ mapM verilogToInt [r1, r2]
                                   g1 = makeGraphV v1
                                   g2 = makeGraphV v2
                                   gu = g1 `union` g2

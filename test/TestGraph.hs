@@ -23,8 +23,7 @@ makeTest f = TestCase (do putStrLn $ " Test: " ++ f
                               Right r -> do
                                 let s_inputs  = length ( _inputs  r)
                                 let s_outputs = length ( _outputs r)
-                                let i = attIndexV emptyIndex r
-                                let g = makeGraphV (verilogToInt r i)
+                                let g = makeGraphV . runIndex $ verilogToInt r
                                 assertEqual ("Input  Size test: \"" ++ f ++ "\"") s_inputs  (length $ inputs g)
                                 assertEqual ("Output Size test: \"" ++ f ++ "\"") s_outputs (length $ outputs g)
                                 --a <- return $ Just $ equiv equivKuelmann97M r1 r2
