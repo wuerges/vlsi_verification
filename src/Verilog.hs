@@ -26,10 +26,6 @@ nextIdx name = do
 runIndex :: IdxState a -> a
 runIndex = (flip evalState) (0, M.empty)
 
-
---lookIdx :: Index -> String -> Int
---lookIdx i s = fromMaybe (error $ "Should have found " ++ s ++ "in Map!") (M.lookup s $ _map i)
-
 data Op = And
         | Or
         | Buf
@@ -45,7 +41,6 @@ makeFunction Buf ps = Fun Buf (init ps) [last ps]
 makeFunction Not ps = Fun Not (init ps) [last ps]
 makeFunction op (p:ps) = Fun op [p] ps
 makeFunction _ _      = error "Function must have at least 1 input and 1 output wire"
-
 
 functionToInt :: Function String -> IdxState (Function Int)
 functionToInt f@(Fun{..}) = do
@@ -69,9 +64,6 @@ verilogToInt v@(Verilog{..}) = do
   nos <- mapM nextIdx _outputs
   nfs <- mapM functionToInt _functions
   return $ Verilog nis nos nfs
-
-
-lookIdx = undefined
 
 namesFun :: Function a -> [a]
 namesFun f = _out f ++ _in f
