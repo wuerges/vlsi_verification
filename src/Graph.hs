@@ -97,18 +97,11 @@ embedXor (i1:i2:is) o g = g'
 -- | Inserts a Xnor gate into the graph
 embedXnor is o g = embedXor is o (negateV o g)
 
-
--- | Exclusive or
-xor :: Bool -> Bool -> Bool
-xor True  y = not y
-xor False y = y
-
-
 -- | Replaces a node with only one input and one output with an edge.
 fixSingleNode :: Int -> G -> G
 fixSingleNode n g =  case match n g of
     (Just ctx, g') -> case ctx of
-       ([(vi, ni)], _, _, [(vo, no)]) -> insEdge (ni, no, not $ xor vi vo) g'
+       ([(vi, ni)], _, _, [(vo, no)]) -> insEdge (ni, no, not $ vi /= vo) g'
        _                               -> g
     (Nothing, _)  -> error "Could not match context in fixSingleNode"
 
