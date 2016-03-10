@@ -7,10 +7,12 @@ import Data.List
 import Control.Arrow
 import Debug.Trace
 import qualified Data.Set as S
-import qualified Data.Map as M
+import qualified Data.IntMap as M
 
 -- | The graph that models the circuit after Nand Synthesis Model
 type G = Gr () Bool
+type VG = Gr Bool Bool
+
 type RG = Gr [Int] Bool
 
 -- | Converts a graph to a GraphViz format
@@ -171,3 +173,27 @@ mybfs g | isEmpty g = []
         | otherwise = inputs g ++ (mybfs $ delNodes (inputs g) g)
 
 
+
+-- | simulates the circuit's behavior.
+-- | Receives the graph of the circuit as input and a list of inputs, in order.
+-- | produces the outputs, in order.
+
+
+
+--gmap :: DynGraph gr => (Context a b -> Context c d) -> gr a b -> gr c d
+--ufold :: Graph gr => (Context a b -> c -> c) -> c -> gr a b -> c
+
+simulate1 :: Context () Bool -> M.IntMap Bool -> M.IntMap Bool
+simulate1 ([], n, (), _) m = case M.lookup n m of
+                                Just v ->  m
+                                Nothing -> error "Value for n should have been set."
+simulate1 (is, n, (), _) m = M.insert n v m
+  where
+    v = and $ [m M.! i /= vi | (vi, i) <- is]
+
+
+simulate :: [(Int, Bool)] -> G -> [(Int, Bool)]
+simulate input_values g = [(o, m' M.! o) | o <- outputs g]
+  where
+    m  = M.fromList input_values
+    m' = ufold simulate1 m g
