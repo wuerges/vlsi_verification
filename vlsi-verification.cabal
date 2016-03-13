@@ -17,6 +17,7 @@ library
                      , VerParser  
                      , Kuelmann97 
                      , Equivalence
+                     , LLVMCompile
                      , Verilog    
                      , Graph      
                      , Algo       
@@ -29,6 +30,7 @@ library
                      , mtl
                      , fgl-visualize
                      , parsec
+                     , llvm-general-pure
   default-language:    Haskell2010
 
 Benchmark bench-kuelmann
