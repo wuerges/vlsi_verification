@@ -18,6 +18,7 @@ library
                      , Kuelmann97 
                      , Equivalence
                      , LLVMCompile
+                     , LLVMJIT
                      , Verilog    
                      , Graph      
                      , Algo       
@@ -31,6 +32,8 @@ library
                      , fgl-visualize
                      , parsec
                      , llvm-general-pure
+                     , setenv
+                     , llvm-general
                      , random
                      , time
   default-language:    Haskell2010

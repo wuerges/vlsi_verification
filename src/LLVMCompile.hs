@@ -12,6 +12,13 @@ import Control.Monad (mapM, foldM)
 returnArray :: Name
 returnArray = Name "returnArray"
 
+
+
+defineModule :: G -> Module
+defineModule g = defaultModule
+  { moduleName = "topLevelModule"
+  , moduleDefinitions = [GlobalDefinition $ defineFunction g] }
+
 defineFunction :: G -> Global
 defineFunction g =
     functionDefaults {
