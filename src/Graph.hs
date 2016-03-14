@@ -1,11 +1,13 @@
 module Graph where
 
+import Control.Monad
 import Verilog
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Dot
 import Data.List
 import Control.Arrow
 import Debug.Trace
+import System.Random
 import qualified Data.Set as S
 import qualified Data.IntMap as M
 
@@ -197,3 +199,13 @@ simulate input_values g = [(o, m' M.! o) | o <- outputs g]
   where
     m  = M.fromList input_values
     m' = ufold simulate1 m g
+
+
+
+randomSimulateIO :: G -> IO [(Int, Bool)]
+randomSimulateIO g = do
+  let is = inputs g
+  rs <- replicateM (length is) randomIO
+  return $ simulate (zip is rs) g
+
+
