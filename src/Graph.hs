@@ -1,11 +1,13 @@
 module Graph where
 
+import Control.Monad
 import Verilog
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Dot
 import Data.List
 import Control.Arrow
 import Debug.Trace
+import System.Random
 import qualified Data.Set as S
 import qualified Data.IntMap as M
 
@@ -15,6 +17,7 @@ type Ctx = Context () Bool
 
 
 type VG = Gr Bool Bool
+
 type RG = Gr [Int] Bool
 
 -- | Converts a graph to a GraphViz format
@@ -199,9 +202,3 @@ simulate input_values g = [(o, m' M.! o) | o <- outputs g]
   where
     m  = M.fromList input_values
     m' = ufold simulate1 m g
-
-contexts :: G -> [Ctx]
-contexts g = ufold (:) [] g
-
-
-
