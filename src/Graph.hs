@@ -202,3 +202,12 @@ simulate input_values g = [(o, m' M.! o) | o <- outputs g]
   where
     m  = M.fromList input_values
     m' = ufold simulate1 m g
+
+randomSimulateIO :: G -> IO [(Int, Bool)]
+randomSimulateIO g = do
+    let is = inputs g
+    rs <- replicateM (length is) randomIO
+    return $ simulate (zip is rs) g
+
+contexts :: G -> [Ctx]
+contexts g = ufold (:) [] g
