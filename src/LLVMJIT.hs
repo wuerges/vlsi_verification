@@ -1,21 +1,18 @@
 module LLVMJIT where
 
 
+ {-
 import LLVM.General.PrettyPrint
 import LLVM.General.AST
 import LLVM.General.Module
 
-
-import LLVMCompile
-import Graph
-
 compileGraph :: G -> String
 compileGraph = show . defineModule
+  -}
 
 
 
 
-{-
 import Data.Int
 import Data.Word
 import Foreign.Ptr ( FunPtr, castFunPtr )
@@ -31,16 +28,28 @@ import qualified LLVM.General.AST as AST
 import LLVM.General.PassManager
 import LLVM.General.Transforms
 import LLVM.General.Analysis
+import LLVM.General.PrettyPrint
+
 
 import qualified LLVM.General.ExecutionEngine as EE
 
 
+import qualified Data.Graph.Inductive as GI
 import Graph
 import LLVMCompile
 import LLVM.General.AST as AST
 
+runJITG :: G -> IO (Either String AST.Module)
+runJITG g = do
+  putStrLn $ "INPUTS:" ++ show (inputs g)
+  putStrLn $ "OUTPUTS:" ++ show (outputs g)
+  putStrLn $ "NODES:" ++ show (GI.nodes g)
+  putStrLn $ "Dotty:\n----------------\n" ++ showGraph g ++ "\n-------------\n"
+  runJIT (defineModule g)
+
 runJIT :: AST.Module -> IO (Either String AST.Module)
 runJIT mod = do
+  putStrLn $ showPretty mod
   withContext $ \context ->
     jit context $ \executionEngine ->
       runExceptT $ withModuleFromAST context mod $ \m ->
@@ -77,4 +86,3 @@ jit c = EE.withMCJIT c optlevel model ptrelim fastins
 
 passes :: PassSetSpec
 passes = defaultCuratedPassSetSpec { optLevel = Just 3 }
--}

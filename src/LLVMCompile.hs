@@ -26,7 +26,7 @@ defineFunction g =
         , parameters  = (ra:[Parameter i1 (mkname x) [] | x <- inputs g], False)
         , returnType  = void
         , basicBlocks =
-            [BasicBlock (Name "bb0") is (Name "ret" := Ret Nothing [])]
+          [BasicBlock (Name "bb0") (reverse is) (Name "ret" := Ret Nothing [])]
         }
     where ctxs    = contexts g
           (_, is) = execState (mapM_ genContext ctxs) (0, [])
