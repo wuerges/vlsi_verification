@@ -11,8 +11,10 @@ import qualified Data.IntMap as M
 
 -- | The graph that models the circuit after Nand Synthesis Model
 type G = Gr () Bool
-type VG = Gr Bool Bool
+type Ctx = Context () Bool
 
+
+type VG = Gr Bool Bool
 type RG = Gr [Int] Bool
 
 -- | Converts a graph to a GraphViz format
@@ -197,3 +199,9 @@ simulate input_values g = [(o, m' M.! o) | o <- outputs g]
   where
     m  = M.fromList input_values
     m' = ufold simulate1 m g
+
+contexts :: G -> [Ctx]
+contexts g = ufold (:) [] g
+
+
+
