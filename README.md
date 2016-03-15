@@ -1,13 +1,17 @@
 ## Synopsis
 
-This project is:
+This project is (or aims to):
 
 1. A solution to the [Problem B](http://cad-contest.el.cycu.edu.tw/problem_B/default.htm) of the ICCAD 2015 Contest.
 
+2. A solution to the [Problem B](http://cad-contest-2016.el.cycu.edu.tw/problem_B/default.html) of the ICCAD 2016 Contest.
 
-2. A verilog netlist parser written in haskell with [Parsec](https://wiki.haskell.org/Parsec). It turns a verilog netlist into a graph, with all ports converted to And an Not (nand synthesis), than can be easily manipulated using [fgl](http://hackage.haskell.org/package/fgl).
+3. A verilog netlist parser written in haskell with [Parsec](https://wiki.haskell.org/Parsec). It turns a verilog netlist into a graph, with all ports converted to And an Not (nand synthesis), than can be easily manipulated using [fgl](http://hackage.haskell.org/package/fgl).
 
-3. A ***ORBDD*** (Ordered Reduced Binary Decision Diagrams) creation and manipulation framework. ORBDD represent combinational circuits in canonical form, that is, the ORBDDs of equivalent predicates are equal. For this reason, ORBDDs are specialy useful to check equivalence of combinational circuits.
+4. A verilog netlist nand-synthesizer and JIT compiler, for very fast simulation.
+
+5. A ***ORBDD*** (Ordered Reduced Binary Decision Diagrams) creation and manipulation framework. ORBDD represent combinational circuits in canonical form, that is, the ORBDDs of equivalent predicates are equal. For this reason, ORBDDs are specialy useful to check equivalence of combinational circuits.
+
 
 ## Code Examples
 
