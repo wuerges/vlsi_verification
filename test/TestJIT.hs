@@ -15,10 +15,10 @@ import Verilog
 
 second = 1000000
 
-filesCorrect = ["BDD"]
-filesWrong   = []
---filesCorrect = ["BDD", "unit1", "unit10", "unit12", "unit14", "unit16"]
---filesWrong   = ["BDD_wrong", "unit2", "unit11", "unit13", "unit15", "unit17"]
+--filesCorrect = ["BDD"]
+--filesWrong   = []
+filesCorrect = ["BDD", "unit1", "unit10", "unit12", "unit14", "unit16"]
+filesWrong   = ["BDD_wrong", "unit2", "unit11", "unit13", "unit15", "unit17"]
 
 makeTest f = TestCase (do putStrLn $ " Test: " ++ f
                           p <- parseVerilog $ "tests/"++f++"/in_1.v"
@@ -27,6 +27,7 @@ makeTest f = TestCase (do putStrLn $ " Test: " ++ f
                                 let s_inputs  = length ( _inputs  r)
                                 let s_outputs = length ( _outputs r)
                                 let g = makeGraphV . runIndex $ verilogToInt r
+                                --mapM_ (print) (contexts g)
                                 r <- runJITG g
                                 case r of
                                   Right x -> putStrLn "ok"

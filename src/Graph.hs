@@ -3,6 +3,7 @@ module Graph where
 import Control.Monad
 import Verilog
 import Data.Graph.Inductive
+import Data.Graph.Inductive.Query.DFS
 import Data.Graph.Inductive.Dot
 import Data.List
 import Control.Arrow
@@ -210,4 +211,4 @@ randomSimulateIO g = do
     return $ simulate (zip is rs) g
 
 contexts :: G -> [Ctx]
-contexts g = ufold (:) [] g
+contexts g = map (context g) (topsort g) --ufold (:) [] g
