@@ -15,7 +15,7 @@ compileGraph = show . defineModule
 
 import Data.Int
 import Data.Word
-import Foreign.Ptr ( FunPtr, castFunPtr )
+import Foreign.Ptr ( FunPtr, castFunPtr, Ptr )
 
 import Control.Monad.Except
 
@@ -31,6 +31,8 @@ import LLVM.General.Analysis
 import LLVM.General.PrettyPrint
 
 
+import Foreign.Marshal.Array
+
 import qualified LLVM.General.ExecutionEngine as EE
 
 
@@ -40,16 +42,16 @@ import LLVMCompile
 import LLVM.General.AST as AST
 import Data.Time
 
-runJITG :: G -> IO (Either String AST.Module)
-runJITG g = do
+runJITG :: G -> [Bool] -> IO (Either String AST.Module)
+runJITG g is = do
   --putStrLn $ "INPUTS:" ++ show (inputs g)
   --putStrLn $ "OUTPUTS:" ++ show (outputs g)
   --putStrLn $ "NODES:" ++ show (GI.nodes g)
   --putStrLn $ "Dotty:\n----------------\n" ++ showGraph g ++ "\n-------------\n"
-  runJIT (defineModule g)
+  runJIT g is (defineModule g)
 
-runJIT :: AST.Module -> IO (Either String AST.Module)
-runJIT mod = do
+runJIT :: G -> [Bool] -> AST.Module -> IO (Either String AST.Module)
+runJIT g is mod = do
   --putStrLn $ showPretty mod
   withContext $ \context ->
     jit context $ \executionEngine ->
@@ -65,9 +67,9 @@ runJIT mod = do
             mainfn <- EE.getFunction ee (AST.Name "topLevel")
             case mainfn of
               Just fn -> do
-                res <- do 
+                res <- do
                         start <- getCurrentTime
-                        run fn
+                        --os <- run fn g is
                         stop <- getCurrentTime
                         putStrLn $ "Run in : " ++ show (diffUTCTime stop start)
 
@@ -78,10 +80,21 @@ runJIT mod = do
           -- Return the optimized module
           return optmod
 
-foreign import ccall "dynamic" haskFun :: FunPtr (IO Double) -> (IO Double)
+type FType = (Ptr Bool -> IO (Ptr Bool))
 
-run :: FunPtr a -> IO Double
-run fn = haskFun (castFunPtr fn :: FunPtr (IO Double))
+ {-
+foreign import ccall "dynamic" haskFun ::
+  FunPtr FType -> FType
+
+run :: FunPtr () -> G -> [Bool] -> IO [Bool]
+run fn g ivs = do
+  ia <- if length ivs == length (inputs g)
+           then newArray ivs :: IO (Ptr Bool)
+           else error "Trying to allocate array with the wrong size of inputs"
+  oa <- mallocArray (length $ outputs g) :: IO (Ptr Bool)
+  --(haskFun (castFunPtr (fn :: FunPtr FType))) ia oa
+  return [True]
+-}
 
 jit :: Context -> (EE.MCJIT -> IO a) -> IO a
 jit c = EE.withMCJIT c optlevel model ptrelim fastins

@@ -12,6 +12,12 @@ import Control.Monad (mapM, foldM)
 returnArray :: Name
 returnArray = Name "returnArray"
 
+inputArray :: Name
+inputArray = Name "inputArray"
+
+mkarrayParameter :: [Int] -> Name -> Parameter
+mkarrayParameter ns n =
+  Parameter (ArrayType (fromIntegral . length $ ns) i1) n []
 
 
 defineModule :: G -> Module
@@ -23,18 +29,42 @@ defineFunction :: G -> Global
 defineFunction g =
     functionDefaults {
           name        = Name "topLevel"
-        , parameters  = (ra:[Parameter i1 (mkname x) [] | x <- inputs g], False)
+        , parameters  = ([ia, ra], False)
         , returnType  = void
         , basicBlocks =
           [BasicBlock (Name "bb0") (reverse is) (Name "ret" := Ret Nothing [])]
         }
     where ctxs    = contexts g
-          (_, is) = execState (mapM_ genContext ctxs) (0, [])
-          ra = Parameter
-                (ArrayType
-                    (fromIntegral. length $ outputs g) i1) returnArray []
+          (_, is) = execState (generateCode g) (0, [])
+          ia = mkarrayParameter (inputs g) inputArray
+          ra = mkarrayParameter (outputs g) returnArray
 
 type Codegen a = State (Word, [Named Instruction]) a
+
+
+copyInput :: Int -> Codegen ()
+copyInput idx =
+  genInstr $ mkname idx := ExtractValue (mkoperand inputArray) [fromIntegral idx] []
+
+
+
+copyOutput :: Int -> Codegen ()
+copyOutput idx =
+  genInstr $ mkname idx := InsertValue
+                             (mkoperand inputArray)
+                             (mkoperand . mkname $ idx)
+                             [fromIntegral idx]
+                             []
+
+
+generateCode :: G -> Codegen ()
+generateCode g = do
+  let ctxs = contexts g
+  mapM_ copyInput (inputs g)
+  mapM_ genContext ctxs
+--  mapM_ copyOutput (outputs g)
+
+
 
 fresh :: Codegen Name
 fresh = do
