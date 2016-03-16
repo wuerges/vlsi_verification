@@ -61,7 +61,7 @@ runJIT g is mod = do
           {-runPassManager pm m-}
           optmod <- moduleAST m
           s <- moduleLLVMAssembly m
-          --putStrLn s
+          putStrLn s
 
           EE.withModuleInEngine executionEngine m $ \ee -> do
             mainfn <- EE.getFunction ee (AST.Name "topLevel")
