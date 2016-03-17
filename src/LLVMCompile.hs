@@ -33,19 +33,18 @@ defineFunction :: G -> Global
 defineFunction g =
     functionDefaults {
           name        = Name "topLevel"
-        , parameters  = ([ia, ra], False)
+        , parameters  = ([ia, ra_initial], False)
         , returnType  = mkArrType l
         , basicBlocks =
           [BasicBlock
             (Name "bb0")
             (reverse is)
-            (Name "ret" := Ret (Just $ mkArrOp l returnArray) [])
+            (Name "ret" := Ret (Just $ mkArrOp l ra_final) [])
           ]
         }
     where ctxs    = contexts g
-          (_, is) = execState (generateCode g) (0, [])
-          ia = mkarrayParameter (inputs g) inputArray
-          ra = mkarrayParameter (outputs g) returnArray
+          (ra_final, is) = execState (generateCode g) (0, [])
+          ra_initial = mkarrayParameter (outputs g) returnArray
           l  = length $ outputs g
 
 type Codegen a = State (Word, [Named Instruction]) a
@@ -77,22 +76,23 @@ copyInput l (idx, tgt) = trace ("\nIDX : " ++ show idx ++ "\n") $
         []
      -}
 
-copyOutput :: Int -> (Int, Int) -> Codegen ()
-copyOutput l (idx, tgt) = do
+copyOutput :: Int -> Name -> (Int, Int) -> Codegen Name
+copyOutput l array (idx, tgt) = do
   o <- fresh
   genInstr $ o :=
     InsertValue
-      (LocalReference (mkArrType l) returnArray)
+      (LocalReference (mkArrType l) array)
       (LocalReference i32 (mkname tgt))
       [fromIntegral idx]
       []
+  return o
 
-generateCode :: G -> Codegen ()
+generateCode :: G -> Codegen Name
 generateCode g = do
   let ctxs = contexts g
   mapM_ (copyInput (length $ inputs g)) (zip [0..] (inputs g))
   mapM_ genContext ctxs
-  mapM_ (copyOutput (length $ outputs g)) (zip [0..] (outputs g))
+  ra <- foldM (copyOutput (length $ outputs g)) returnArray (zip [0..] (outputs g))
 
 fresh :: Codegen Name
 fresh = do
