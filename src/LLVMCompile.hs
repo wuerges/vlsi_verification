@@ -10,7 +10,7 @@ import Control.Monad.State (get, put, runState, State)
 import Control.Monad (mapM, foldM)
 
 
-import Debug.Trace
+--import Debug.Trace
 
 returnArray :: Name
 returnArray = Name "returnArray"
@@ -59,7 +59,7 @@ mkArrOp :: Int -> Name -> Operand
 mkArrOp l name = LocalReference (mkArrType l) name
 
 copyInput :: Int -> (Int, Int) -> Codegen ()
-copyInput l (idx, tgt) = trace ("\nIDX : " ++ show idx ++ "\n") $
+copyInput l (idx, tgt) = --trace ("\nIDX : " ++ show idx ++ "\n") $
   do
     --n <- fresh
     --genInstr $ mkname idx := Alloca i32 Nothing 4 []

@@ -43,15 +43,13 @@ import LLVMCompile
 import LLVM.General.AST as AST
 import Data.Time
 
-runJITG :: G -> [Bool] -> IO (Either String AST.Module)
-runJITG g is = do
-  --putStrLn $ "INPUTS:" ++ show (inputs g)
-  --putStrLn $ "OUTPUTS:" ++ show (outputs g)
-  --putStrLn $ "NODES:" ++ show (GI.nodes g)
-  --putStrLn $ "Dotty:\n----------------\n" ++ showGraph g ++ "\n-------------\n"
-  runJIT g is (defineModule g)
+runJITG :: G -> [Bool] -> Maybe AST.Module ->  IO (Either String (AST.Module, [Bool]))
+runJITG g is mod  = do
+  case mod of
+    Nothing -> runJIT g is (defineModule g)
+    Just m ->  runJIT g is m
 
-runJIT :: G -> [Bool] -> AST.Module -> IO (Either String AST.Module)
+runJIT :: G -> [Bool] -> AST.Module -> IO (Either String (AST.Module, [Bool]))
 runJIT g is mod = do
   --putStrLn $ showPretty mod
   withContext $ \context ->
@@ -64,7 +62,7 @@ runJIT g is mod = do
           s <- moduleLLVMAssembly m
           putStrLn s
 
-          EE.withModuleInEngine executionEngine m $ \ee -> do
+          res' <- EE.withModuleInEngine executionEngine m $ \ee -> do
             mainfn <- EE.getFunction ee (AST.Name "topLevel")
             case mainfn of
               Just fn -> do
@@ -74,15 +72,15 @@ runJIT g is mod = do
                         stop <- getCurrentTime
                         putStrLn $ "Run in : " ++ show (diffUTCTime stop start)
                         return os
-
-                putStrLn $ "Evaluated to: " ++ show res
+                --putStrLn $ "Evaluated to: " ++ show res
+                return res
               Nothing -> error $ "Could not find function"
                 --return ()
 
           -- Return the optimized module
-          return optmod
+          return (optmod, res')
 
-type FType = (Ptr Bool -> Ptr Bool -> IO (Ptr Bool))
+type FType = (Ptr Word32 -> Ptr Word32 -> IO (Ptr Word32))
 
 foreign import ccall "dynamic" haskFun ::
   FunPtr FType -> FType
@@ -94,23 +92,41 @@ allocToPtr vs = newArray vs
 freeToBool :: Int -> Ptr Bool -> IO [Bool]
 freeToBool s pvs =
   do bools <- peekArray s pvs
-     free pvs
+     --free pvs
      return bools
+
+btw :: Bool -> Word32
+btw True  = 1
+btw False = 0
+
+wtb :: Word32 -> Bool
+wtb 1 = True
+wtb 0 = False
+wtb _ = error "fuck"
 
 
 run :: FunPtr () -> G -> [Bool] -> IO [Bool]
 run fn g ivs = do
+  let ivs_32 = map btw ivs
+      l_os = length $ outputs g
+      f    = haskFun (castFunPtr (fn :: FunPtr ()) :: FunPtr FType)
+  withArray ivs_32 (\ia_ptr ->
+    withArray (replicate l_os 1) (\ra_ptr ->
+      do ptr <- f ia_ptr ra_ptr
+         --ws <- peekArray l_os ptr
+         ws <- peekArray l_os ra_ptr
+         return $ map wtb ws
+         ))
+
+
+ {-
+  putStrLn $ "Allocating arrays of sizes: " ++ show (length $ inputs g, length $ outputs g)
   ia <- if length ivs == length (inputs g)
-           then newArray ivs :: IO (Ptr Bool)
+           then allocToPtr ivs :: IO (Ptr Bool)
            else error "Trying to allocate array with the wrong size of inputs"
   oa <- mallocArray (length $ outputs g) :: IO (Ptr Bool)
-  ret <- (haskFun (castFunPtr (fn :: FunPtr ()) :: FunPtr FType)) ia oa
-  retBools <- peekArray (length $ outputs g) ret
-  free ia
-  free oa
-  putStrLn $ "Input Values:  " ++ show ivs
-  putStrLn $ "Output Values: " ++ show retBools
-  return retBools
+  freeToBool  (length $ outputs g) ret
+  -}
 
 jit :: Context -> (EE.MCJIT -> IO a) -> IO a
 jit c = EE.withMCJIT c optlevel model ptrelim fastins
