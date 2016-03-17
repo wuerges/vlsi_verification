@@ -1,12 +1,14 @@
 module LLVMCompile where
 
 import Graph
+
+import Data.Word
 import LLVM.General.AST
 import LLVM.General.AST.Global
 import LLVM.General.AST.Type
 import LLVM.General.AST.AddrSpace
 import qualified LLVM.General.AST.Constant as C
-import Control.Monad.State (get, put, runState, State)
+import Control.Monad.State (get, put, execState, State)
 import Control.Monad (mapM, foldM)
 
 
@@ -18,10 +20,10 @@ returnArray = Name "returnArray"
 inputArray :: Name
 inputArray = Name "inputArray"
 
-mkarrayParameter :: [Int] -> Name -> Parameter
-mkarrayParameter ns n =
+mkarrayParameter :: Name -> Parameter
+mkarrayParameter n =
   --Parameter (ArrayType (fromIntegral . length $ ns) i1) n []
-  Parameter (ArrayType (fromIntegral . length $ ns) i32) n []
+  Parameter (ptr i32) n []
 
 
 defineModule :: G -> Module
@@ -34,19 +36,18 @@ defineFunction g =
     functionDefaults {
           name        = Name "topLevel"
         , parameters  = ([ia, ra_initial], False)
-        , returnType  = mkArrType l
+        , returnType  = void
         , basicBlocks =
           [BasicBlock
             (Name "bb0")
             (reverse is)
-            (Name "ret" := Ret (Just $ mkArrOp l ra_final) [])
+            (Name "ret" := Ret Nothing [])
           ]
         }
     where
-      (ra_final, (_, is)) = runState (generateCode g) (0, [])
-      ia                  = mkarrayParameter (inputs g) inputArray
-      ra_initial          = mkarrayParameter (outputs g) returnArray
-      l                   = length $ outputs g
+      (_, is)    = execState (generateCode g) (0, [])
+      ia         = mkarrayParameter inputArray
+      ra_initial = mkarrayParameter returnArray
 
 type Codegen a = State (Word, [Named Instruction]) a
 
@@ -58,42 +59,31 @@ mkArrType n = ArrayType (fromIntegral n) i32
 mkArrOp :: Int -> Name -> Operand
 mkArrOp l name = LocalReference (mkArrType l) name
 
-copyInput :: Int -> (Int, Int) -> Codegen ()
-copyInput l (idx, tgt) = --trace ("\nIDX : " ++ show idx ++ "\n") $
-  do
-    --n <- fresh
-    --genInstr $ mkname idx := Alloca i32 Nothing 4 []
-    --genInstr $ mkname idx := ExtractValue (mkoperand inputArray) [fromIntegral idx] []
-    genInstr $ mkname tgt :=
-      ExtractValue
-        (mkArrOp l inputArray)
-        [fromIntegral idx]
-        []
-    {-
-    genInstr $ mkname idx :=
-      ExtractElement
-        (mkoperand inputArray)
-        (ConstantOperand $ C.Int 32 (fromIntegral idx))
-        []
-     -}
-
-copyOutput :: Int -> Name -> (Int, Int) -> Codegen Name
-copyOutput l array (idx, tgt) = do
+copyInput :: Name -> (Int, Int) -> Codegen ()
+copyInput array (idx, tgt) = do
   o <- fresh
-  genInstr $ o :=
-    InsertValue
-      (LocalReference (mkArrType l) array)
-      (LocalReference i32 (mkname tgt))
-      [fromIntegral idx]
-      []
-  return o
+  genInstr $ o := GetElementPtr True (LocalReference (ptr i32) array) [constOp idx] []
+  genInstr $ mkname tgt := Load False (LocalReference (ptr i32) o) Nothing 4 []
 
-generateCode :: G -> Codegen Name
+copyOutput :: Name -> (Int, Int) -> Codegen ()
+copyOutput array (idx, tgt) = do
+  o  <- fresh
+  st <- fresh
+  genInstr $ o := GetElementPtr True (LocalReference (ptr i32) array) [constOp idx] []
+  genInstr $ st := Store
+      False
+      (LocalReference (ptr i32) o)
+      (LocalReference i32 (mkname tgt))
+      Nothing
+      4
+      []
+
+generateCode :: G -> Codegen ()
 generateCode g = do
   let ctxs = contexts g
-  mapM_ (copyInput (length $ inputs g)) (zip [0..] (inputs g))
+  mapM_ (copyInput inputArray) (zip [0..] (inputs g))
   mapM_ genContext ctxs
-  foldM (copyOutput (length $ outputs g)) returnArray (zip [0..] (outputs g))
+  mapM_ (copyOutput returnArray) (zip [0..] (outputs g))
 
 fresh :: Codegen Name
 fresh = do
@@ -125,11 +115,14 @@ genAnd [n]    = return n
 genAnd (n:ns) = foldM genAnd1 n ns
 
 
+constOp :: Int -> Operand
+constOp v = ConstantOperand $ C.Int 32 (fromIntegral v)
+
 constOne :: Operand
-constOne = ConstantOperand $ C.Int 32 1
+constOne = constOp 1
 
 constZero :: Operand
-constZero = ConstantOperand $ C.Int 32 0
+constZero = constOp 0
 
 genNames1 :: (Bool, Int) -> Codegen Name
 genNames1 (True, x ) = return $ mkname x
