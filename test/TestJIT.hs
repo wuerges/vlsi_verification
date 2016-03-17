@@ -51,9 +51,11 @@ makeTest (n, (is, os)) = TestCase $ do
           Left l  -> assertFailure $ show l
       Left l  -> assertFailure $ show l
 
+makeInputs i = zip (repeat $ fn i) (tvs i)
+
 
 tests =
-  TestList $ map makeTest (zip (repeat $ fn bdd_in1) (tvs bdd_in1))
+  TestList $ map makeTest (concatMap makeInputs [bdd_in1])
 
 
 main = runTestTT tests >>= print
