@@ -6,7 +6,7 @@ import LLVM.General.AST.Global
 import LLVM.General.AST.Type
 import LLVM.General.AST.AddrSpace
 import qualified LLVM.General.AST.Constant as C
-import Control.Monad.State (get, put, execState, State)
+import Control.Monad.State (get, put, runState, State)
 import Control.Monad (mapM, foldM)
 
 
@@ -42,10 +42,11 @@ defineFunction g =
             (Name "ret" := Ret (Just $ mkArrOp l ra_final) [])
           ]
         }
-    where ctxs    = contexts g
-          (ra_final, is) = execState (generateCode g) (0, [])
-          ra_initial = mkarrayParameter (outputs g) returnArray
-          l  = length $ outputs g
+    where
+      (ra_final, (_, is)) = runState (generateCode g) (0, [])
+      ia                  = mkarrayParameter (inputs g) inputArray
+      ra_initial          = mkarrayParameter (outputs g) returnArray
+      l                   = length $ outputs g
 
 type Codegen a = State (Word, [Named Instruction]) a
 
@@ -92,7 +93,7 @@ generateCode g = do
   let ctxs = contexts g
   mapM_ (copyInput (length $ inputs g)) (zip [0..] (inputs g))
   mapM_ genContext ctxs
-  ra <- foldM (copyOutput (length $ outputs g)) returnArray (zip [0..] (outputs g))
+  foldM (copyOutput (length $ outputs g)) returnArray (zip [0..] (outputs g))
 
 fresh :: Codegen Name
 fresh = do
