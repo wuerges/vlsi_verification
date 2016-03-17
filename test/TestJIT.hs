@@ -32,8 +32,6 @@ bdd_in1 = TF
   }
 
 
-
-
 --filesWrong   = []
 --filesCorrect = ["BDD", "unit1", "unit10", "unit12", "unit14", "unit16"]
 --filesWrong   = ["BDD_wrong", "unit2", "unit11", "unit13", "unit15", "unit17"]

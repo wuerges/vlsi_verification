@@ -12,14 +12,12 @@ import System.Timeout
 import LLVMJIT
 import Graph
 import Verilog
+import TestBase
 
 second = 1000000
 
-filesCorrect = ["BDD", "unit1", "unit10", "unit12", "unit14", "unit16"]
-filesWrong   = ["BDD_wrong", "unit2", "unit11", "unit13", "unit15", "unit17"]
-
-makeTest f = TestCase (do putStrLn $ " Test: " ++ f
-                          p <- parseVerilog $ "tests/"++f++"/in_1.v"
+makeTest f = TestCase (do putStrLn $ "\n-----------------------\n Test: " ++ f
+                          p <- parseVerilog $ f
                           case p of
                               Right r -> do
                                 let s_inputs  = length ( _inputs  r)
@@ -32,7 +30,10 @@ makeTest f = TestCase (do putStrLn $ " Test: " ++ f
                               Left l -> assertFailure $ show l)
 
 
-tests = TestList $ map makeTest (filesCorrect ++ filesWrong)
+
+
+
+tests = TestList $ map makeTest fileNames
 
 
 main = runTestTT tests >>= print

@@ -59,19 +59,14 @@ runJIT g is mod = do
           -- Optimization Pass
           {-runPassManager pm m-}
           optmod <- moduleAST m
-          s <- moduleLLVMAssembly m
-          putStrLn s
+          --s <- moduleLLVMAssembly m
+          --putStrLn s
 
           res' <- EE.withModuleInEngine executionEngine m $ \ee -> do
             mainfn <- EE.getFunction ee (AST.Name "topLevel")
             case mainfn of
               Just fn -> do
-                res <- do
-                        start <- getCurrentTime
-                        os <- run fn g is
-                        stop <- getCurrentTime
-                        putStrLn $ "Run in : " ++ show (diffUTCTime stop start)
-                        return os
+                res <- run fn g is
                 --putStrLn $ "Evaluated to: " ++ show res
                 return res
               Nothing -> error $ "Could not find function"
