@@ -32,6 +32,7 @@ import LLVM.General.PrettyPrint
 
 
 import Foreign.Marshal.Array
+import Foreign.Marshal.Alloc
 
 import qualified LLVM.General.ExecutionEngine as EE
 
@@ -69,9 +70,10 @@ runJIT g is mod = do
               Just fn -> do
                 res <- do
                         start <- getCurrentTime
-                        --os <- run fn g is
+                        os <- run fn g is
                         stop <- getCurrentTime
                         putStrLn $ "Run in : " ++ show (diffUTCTime stop start)
+                        return os
 
                 putStrLn $ "Evaluated to: " ++ show res
               Nothing -> error $ "Could not find function"
@@ -80,9 +82,8 @@ runJIT g is mod = do
           -- Return the optimized module
           return optmod
 
-type FType = (Ptr Bool -> IO (Ptr Bool))
+type FType = (Ptr Bool -> Ptr Bool -> IO (Ptr Bool))
 
- {-
 foreign import ccall "dynamic" haskFun ::
   FunPtr FType -> FType
 
@@ -92,9 +93,13 @@ run fn g ivs = do
            then newArray ivs :: IO (Ptr Bool)
            else error "Trying to allocate array with the wrong size of inputs"
   oa <- mallocArray (length $ outputs g) :: IO (Ptr Bool)
-  --(haskFun (castFunPtr (fn :: FunPtr FType))) ia oa
-  return [True]
--}
+  ret <- (haskFun (castFunPtr (fn :: FunPtr ()) :: FunPtr FType)) ia oa
+  retBools <- peekArray (length $ outputs g) ret
+  free ia
+  free oa
+  putStrLn $ "Input Values:  " ++ show ivs
+  putStrLn $ "Output Values: " ++ show retBools
+  return retBools
 
 jit :: Context -> (EE.MCJIT -> IO a) -> IO a
 jit c = EE.withMCJIT c optlevel model ptrelim fastins
