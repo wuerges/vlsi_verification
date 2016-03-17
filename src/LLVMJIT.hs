@@ -87,6 +87,17 @@ type FType = (Ptr Bool -> Ptr Bool -> IO (Ptr Bool))
 foreign import ccall "dynamic" haskFun ::
   FunPtr FType -> FType
 
+
+allocToPtr :: [Bool] -> IO (Ptr Bool)
+allocToPtr vs = newArray vs
+
+freeToBool :: Int -> Ptr Bool -> IO [Bool]
+freeToBool s pvs =
+  do bools <- peekArray s pvs
+     free pvs
+     return bools
+
+
 run :: FunPtr () -> G -> [Bool] -> IO [Bool]
 run fn g ivs = do
   ia <- if length ivs == length (inputs g)

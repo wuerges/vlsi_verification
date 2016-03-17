@@ -184,11 +184,6 @@ mybfs g | isEmpty g = []
 -- | Receives the graph of the circuit as input and a list of inputs, in order.
 -- | produces the outputs, in order.
 
-
-
---gmap :: DynGraph gr => (Context a b -> Context c d) -> gr a b -> gr c d
---ufold :: Graph gr => (Context a b -> c -> c) -> c -> gr a b -> c
-
 simulate1 :: Context () Bool -> M.IntMap Bool -> M.IntMap Bool
 simulate1 ([], n, (), _) m = case M.lookup n m of
                                 Just v ->  m
