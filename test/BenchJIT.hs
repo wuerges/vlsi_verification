@@ -21,13 +21,20 @@ makeTest n = TestCase $ do
     case p of
       Right r -> do
         let g = makeGraphV . runIndex $ verilogToInt r
+            inputs_t = replicate (length (inputs g)) True
 
         start <- getCurrentTime
-        r' <- runJITG g (replicate (length (inputs g)) True) Nothing
+        optmodT <- compileF g
         stop <- getCurrentTime
-        putStrLn $  "\n====================\nFinished simulation in: " ++ show (diffUTCTime stop start)
-        case r' of
-          Right (_, x) -> putStrLn $ "\n==============> Success!"
+        case optmodT of
+          Right optmodule -> do
+            putStrLn $  "\n====================\nFinished compilation in: "
+                        ++ show (diffUTCTime stop start)
+            startS <- getCurrentTime
+            r <- runF g optmodule inputs_t
+            stopS <- getCurrentTime
+            putStrLn $  "\n====================\nFinished simulation in: "
+                         ++ show (diffUTCTime stopS startS)
           Left l  -> assertFailure $ show l
       Left l  -> assertFailure $ show l
 

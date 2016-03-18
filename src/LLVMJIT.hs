@@ -49,6 +49,29 @@ runJITG g is mod  = do
     Nothing -> runJIT g is (defineModule g)
     Just m ->  runJIT g is m
 
+compileF :: G -> IO (Either String  AST.Module)
+compileF g = do
+  let mod = defineModule g
+  withContext $ \context ->
+    jit context $ \executionEngine ->
+      runExceptT $ withModuleFromAST context mod $ \m ->
+        withPassManager passes $ \pm -> do
+          runPassManager pm m
+          moduleAST m
+
+
+runF :: G -> AST.Module -> [Bool] -> IO (Either String [Bool])
+runF g mod is = do
+  withContext $ \context ->
+    jit context $ \executionEngine ->
+      runExceptT $ withModuleFromAST context mod $ \m ->
+        EE.withModuleInEngine executionEngine m $ \ee -> do
+          mainfn <- EE.getFunction ee (AST.Name "topLevel")
+          case mainfn of
+            Just fn -> do
+              run fn g is
+            Nothing -> error $ "Could not find function"
+
 runJIT :: G -> [Bool] -> AST.Module -> IO (Either String (AST.Module, [Bool]))
 runJIT g is mod = do
   --putStrLn $ showPretty mod

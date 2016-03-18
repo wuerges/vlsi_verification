@@ -42,10 +42,15 @@ makeTest (n, (is, os)) = TestCase $ do
     case p of
       Right r -> do
         let g = makeGraphV . runIndex $ verilogToInt r
-        r' <- runJITG g is Nothing
-        case r' of
-          Right (_, x) ->
-            assertEqual ("\n-----------------------\ninputs: " ++ show is ++ " outputs:") os x
+        optmodT <- compileF g
+        case optmodT of
+          Right mod -> do
+            res <- runF g mod is
+            case res of
+              Right x -> assertEqual
+                          ("\n-----------------------\ninputs: " ++ show is ++ " outputs:")
+                          os x
+              Left l  -> assertFailure $ show l
           Left l  -> assertFailure $ show l
       Left l  -> assertFailure $ show l
 
