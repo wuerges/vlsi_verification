@@ -31,7 +31,8 @@ reverseMap = M.fromList . (map swap) . M.toList
 diff2 a b = (S.difference sa sb `S.union` S.difference sb sa) `S.difference` s_at_0
   where sa = S.fromList a
         sb = S.fromList b
-        s_at_0 = S.fromList ["1'b0", "n52110"] -- tests/unit11/in_2.v
+        --s_at_0 = S.fromList ["1'b0", "n52110"] -- tests/unit11/in_2.v
+        s_at_0 = S.fromList ["n52110"] -- tests/unit11/in_2.v
 
 
 
