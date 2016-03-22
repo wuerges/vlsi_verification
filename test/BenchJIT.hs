@@ -8,6 +8,7 @@ import System.Environment
 import Equivalence
 import Data.Either
 import Control.Applicative
+import Control.Monad
 import System.Timeout
 import LLVMJIT
 import Graph
@@ -28,13 +29,12 @@ makeTest n = TestCase $ do
         stop <- getCurrentTime
         case optmodT of
           Right optmodule -> do
-            putStrLn $  "\n====================\nFinished compilation in: "
-                        ++ show (diffUTCTime stop start)
             startS <- getCurrentTime
-            r <- runF g optmodule inputs_t
+            r' <- replicateM 100 $ runF g optmodule inputs_t
             stopS <- getCurrentTime
-            putStrLn $  "\n====================\nFinished simulation in: "
-                         ++ show (diffUTCTime stopS startS)
+            putStrLn $  "\nFile:" ++ show n ++ "    compilation: "
+                     ++ show (diffUTCTime stop start) ++ "     simulation: "
+                     ++ show (diffUTCTime stopS startS)
           Left l  -> assertFailure $ show l
       Left l  -> assertFailure $ show l
 
