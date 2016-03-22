@@ -17,6 +17,8 @@ library
                      , VerParser  
                      , Kuelmann97 
                      , Equivalence
+                     , LLVMCompile
+                     , LLVMJIT
                      , Verilog    
                      , Graph      
                      , Algo       
@@ -29,20 +31,48 @@ library
                      , mtl
                      , fgl-visualize
                      , parsec
+                     , setenv
+                     , llvm-general
+                     , llvm-general-pure
                      , random
                      , time
+                     , transformers
   default-language:    Haskell2010
 
-Benchmark bench-simulation
+
+test-suite integration-tests
   type: exitcode-stdio-1.0
   hs-source-dirs:      test
-  main-is: TestSimulation.hs
+  main-is: TestSuite.hs
+  build-depends:       base
+                     , vlsi-verification
+                     , HUnit
+                     , time
+                     , mtl
+                     , containers
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+
+Benchmark bench-simulation-jit
+  type: exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is: BenchJIT.hs
   build-depends:       base
                      , vlsi-verification
                      , HUnit
                      , time
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
+
+-- Benchmark bench-simulation
+--   type: exitcode-stdio-1.0
+--   hs-source-dirs:      test
+--   main-is: TestSimulation.hs
+--   build-depends:       base
+--                      , vlsi-verification
+--                      , HUnit
+--                      , time
+--   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+--   default-language:    Haskell2010
 
 -- Benchmark bench-kuelmann
 --  type: exitcode-stdio-1.0
@@ -53,27 +83,6 @@ Benchmark bench-simulation
 --                     , HUnit
 --  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
 --  default-language:    Haskell2010
-
-
-test-suite test-kuelmann
-  type: exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is: TestKuelmann97.hs
-  build-depends:       base
-                     , vlsi-verification
-                     , HUnit
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  default-language:    Haskell2010
-
-test-suite test-graph
-  type: exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is: TestGraph.hs
-  build-depends:       base
-                     , vlsi-verification
-                     , HUnit
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  default-language:    Haskell2010
 
 executable gen-test-harness
   hs-source-dirs:      app

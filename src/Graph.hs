@@ -3,6 +3,7 @@ module Graph where
 import Control.Monad
 import Verilog
 import Data.Graph.Inductive
+import Data.Graph.Inductive.Query.DFS
 import Data.Graph.Inductive.Dot
 import Data.List
 import Control.Arrow
@@ -13,6 +14,9 @@ import qualified Data.IntMap as M
 
 -- | The graph that models the circuit after Nand Synthesis Model
 type G = Gr () Bool
+type Ctx = Context () Bool
+
+
 type VG = Gr Bool Bool
 
 type RG = Gr [Int] Bool
@@ -180,11 +184,6 @@ mybfs g | isEmpty g = []
 -- | Receives the graph of the circuit as input and a list of inputs, in order.
 -- | produces the outputs, in order.
 
-
-
---gmap :: DynGraph gr => (Context a b -> Context c d) -> gr a b -> gr c d
---ufold :: Graph gr => (Context a b -> c -> c) -> c -> gr a b -> c
-
 simulate1 :: Context () Bool -> M.IntMap Bool -> M.IntMap Bool
 simulate1 ([], n, (), _) m = case M.lookup n m of
                                 Just v ->  m
@@ -200,12 +199,15 @@ simulate input_values g = [(o, m' M.! o) | o <- outputs g]
     m  = M.fromList input_values
     m' = ufold simulate1 m g
 
-
-
 randomSimulateIO :: G -> IO [(Int, Bool)]
 randomSimulateIO g = do
-  let is = inputs g
-  rs <- replicateM (length is) randomIO
-  return $ simulate (zip is rs) g
+    let is = inputs g
+    rs <- replicateM (length is) randomIO
+    return $ simulate (zip is rs) g
+
+contexts :: G -> [Ctx]
+contexts g = map (context g) (topsort g) --ufold (:) [] g
 
 
+removeStuckAt0 :: [Int] -> G -> G
+removeStuckAt0 = undefined -- TODO
