@@ -207,3 +207,7 @@ randomSimulateIO g = do
 
 contexts :: G -> [Ctx]
 contexts g = map (context g) (topsort g) --ufold (:) [] g
+
+
+removeStuckAt0 :: [Int] -> G -> G
+removeStuckAt0 = undefined -- TODO

@@ -1,3 +1,5 @@
+module TestMarshal where
+
 import LLVMJIT
 import Data.List
 import Test.HUnit
@@ -14,18 +16,17 @@ v6 = intersperse False v3
 
 
 
-makeTest bs = TestCase (do putStrLn $ "\nTesting Foregin Marshalling"
-                           p_bs <- allocToPtr bs
-                           bs2 <- peekArray (length bs) p_bs
-                           bs3 <- peekArray (length bs) p_bs
-                           bs' <- freeToBool (length bs) p_bs
-                           assertEqual "bs' == bs" bs bs'
-                           assertEqual "bs' == bs" bs bs2
-                           assertEqual "bs' == bs" bs bs3
-                       )
+makeTest bs =
+  (TestCase $ do p_bs <- allocToPtr bs
+                 bs2 <- peekArray (length bs) p_bs
+                 bs3 <- peekArray (length bs) p_bs
+                 bs' <- freeToBool (length bs) p_bs
+                 assertEqual "bs' == bs" bs bs'
+                 assertEqual "bs' == bs" bs bs2
+                 assertEqual "bs' == bs" bs bs3
+  )
 
-tests = TestList $ map makeTest [v1, v2, v3, v4, v5, v6]
+tests = TestLabel "\nTesting Foregin Marshalling" $
+  TestList $ map makeTest [v1, v2, v3, v4, v5, v6]
 
-
-main = runTestTT tests >>= print
 

@@ -48,6 +48,8 @@ test-suite integration-tests
                      , vlsi-verification
                      , HUnit
                      , time
+                     , mtl
+                     , containers
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
 
 Benchmark bench-simulation-jit

@@ -1,3 +1,5 @@
+module TestJIT where
+
 import VerParser
 import Algo
 import Kuelmann97
@@ -37,7 +39,7 @@ bdd_in1 = TF
 --filesWrong   = ["BDD_wrong", "unit2", "unit11", "unit13", "unit15", "unit17"]
 
 makeTest :: (String, ([Bool], [Bool])) -> Test
-makeTest (n, (is, os)) = TestCase $ do
+makeTest (n, (is, os)) = TestLabel n $ TestCase $ do
     p <- parseVerilog n
     case p of
       Right r -> do
@@ -57,8 +59,6 @@ makeTest (n, (is, os)) = TestCase $ do
 makeInputs i = zip (repeat $ fn i) (tvs i)
 
 
-tests =
+tests = TestLabel "Testing JIT compilation simulation result" $
   TestList $ map makeTest (concatMap makeInputs [bdd_in1])
 
-
-main = runTestTT tests >>= print

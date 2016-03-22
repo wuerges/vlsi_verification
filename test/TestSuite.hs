@@ -6,6 +6,6 @@ import TestGraph
 
 import Test.HUnit
 
-sTests = TestJIT.tests ++ TestMarshal.tests ++ TestGraph.tests
+sTests = TestList [TestJIT.tests, TestMarshal.tests, TestGraph.tests]
 
 main = runTestTT sTests >>= print
