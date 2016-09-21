@@ -1,15 +1,17 @@
 name:                vlsi-verification
 version:             0.1.0.0
-synopsis:            Verilog synthesis, test and optimization library
+synopsis:            Verilog synthesis, test and optimization librarydescription:         Please see README.md
 homepage:            https://github.com/wuerges/vlsi_verification
 license:             BSD3
 license-file:        LICENSE
 author:              Emilio Wuerges
 maintainer:          wuerges@gmail.com
-category:            Development
+copyright:           BSD3
+category:            EDA
 build-type:          Simple
-extra-source-files:  Readme.md
+extra-source-files:  README.md
 cabal-version:       >=1.10
+
 
 library
   hs-source-dirs:      src
@@ -17,14 +19,12 @@ library
                      , VerParser  
                      , Kuelmann97 
                      , Equivalence
-                     , LLVMCompile
-                     , LLVMJIT
                      , Verilog    
                      , Graph      
                      , Algo       
                      , BDD        
 
-  build-depends:       base >= 4.7 && < 5
+  build-depends:       base
                      , parallel
                      , fgl
                      , containers
@@ -32,8 +32,6 @@ library
                      , fgl-visualize
                      , parsec
                      , setenv
-                     , llvm-general
-                     , llvm-general-pure
                      , random
                      , time
                      , transformers
@@ -51,17 +49,6 @@ test-suite integration-tests
                      , mtl
                      , containers
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-
-Benchmark bench-simulation-jit
-  type: exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is: BenchJIT.hs
-  build-depends:       base
-                     , vlsi-verification
-                     , HUnit
-                     , time
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  default-language:    Haskell2010
 
 -- Benchmark bench-simulation
 --   type: exitcode-stdio-1.0

@@ -14,7 +14,6 @@ import Data.Either
 import Control.Monad.State
 import Control.Applicative
 import System.Timeout
-import LLVMJIT
 import Graph
 import Verilog
 
