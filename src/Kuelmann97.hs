@@ -134,4 +134,13 @@ mergeNodes b g n1 n2 | n1 == n2 = error "Nodes should be different"
     --
     --
 
--- New implementatino bellow
+-- New implementation bellow
+calcBDDNode :: G -> Node -> Maybe BDD
+calcBDDNode g n = do (is, n, nv, os) <- fst $ match n g
+                     bdds <- mapM (calcBDDEdge g) is
+                     return $ mconcat bdds
+
+calcBDDEdge :: G -> (Bool, Node) -> Maybe BDD
+calcBDDEdge g (v, n)
+  | v         =             calcBDDNode g n
+  | otherwise = negateBDD <$> calcBDDNode g n
