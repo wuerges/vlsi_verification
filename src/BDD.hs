@@ -15,6 +15,11 @@ import Control.Monad.State
 data BDD = Zero | One | B BDD Int BDD
   deriving (Eq, Ord, Show)
 
+instance Monoid BDD where
+  mempty = One
+  mappend = bddAnd
+
+
 -- |  accessor for the zero
 --zero (B z v o) = z
 --zero x = error $ "Could not access zero of " ++ show x
@@ -88,7 +93,7 @@ negateBDD One       = Zero
 negateBDD (B z v o) = B (negateBDD z) v (negateBDD o)
 
 
--- | Joist 2 BDDs by a conjunction (and function)
+-- | Joint 2 BDDs by a conjunction (and function)
 bddAnd :: BDD -> BDD -> BDD
 
 bddAnd Zero _ = Zero

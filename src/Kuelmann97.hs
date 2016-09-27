@@ -131,3 +131,7 @@ mergeNodes b g n1 n2 | n1 == n2 = error "Nodes should be different"
           (is1, n1, nub([n2] ++ nv1 ++ nv2), nub (os1 ++ os2))
     -- | Merges 2 contexts, removing the second context
     --mergeCtxs :: Context [Node] Bool -> Context [Node] Bool -> Context [Node] Bool
+    --
+    --
+
+-- New implementatino bellow
