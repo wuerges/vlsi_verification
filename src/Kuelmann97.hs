@@ -61,6 +61,12 @@ mergeNodes n1 n2 g
 type BDDState = State (M.Map Node BDD)
 type KS = StateT (G, M.Map BDD Node) (MaybeT BDDState)
 
+runBDD :: MaybeT BDDState a -> Maybe a
+runBDD bs = evalState (runMaybeT bs) M.empty
+
+runKS :: G -> KS a -> Maybe a
+runKS g ks = fst <$> (runBDD $ runStateT ks (g, M.empty))
+
 kuelmannNode :: Node -> KS ()
 kuelmannNode n1 =
   do (g, m) <- get
@@ -68,6 +74,9 @@ kuelmannNode n1 =
      case M.lookup mbdd m of
        Nothing -> put (g, M.insert mbdd n1 m)
        Just n2 -> put (mergeNodes (max n1 n2) (min n1 n2) g, M.insert mbdd (max n1 n2) m)
+
+getGraph :: KS G
+getGraph = fst <$> get
 
 bddLookup :: Node -> BDDState (Maybe BDD)
 bddLookup n = M.lookup n <$> get
@@ -96,13 +105,13 @@ calcBDDEdge g (v, n)
   | otherwise = negateBDD <$> calcBDDNode g n
 
 equivKuelmann97_2 :: Checker
-equivKuelmann97_2 = undefined
-  {-
-equivKuelmann97_2 :: Checker
-equivKuelmann97_2 g1 g2 os1 os2 = sort (os2' \\ outputs g') == sort os2'
-  where (g, os1', os2') = g1 `union2` g2
+equivKuelmann97_2 g1 g2 os1 os2 =
+  case g' of
+    Nothing -> error "could not finish"
+    Just x ->  sort (os2' \\ outputs x) == sort os2'
+  where (g, os1', os2') = g1 `union` g2
         todo = mybfs g
-        Just (g', _, _) = foldM kuelmannNode (g, M.empty, M.empty) todo
+        --Just (g', _, _) = foldM kuelmannNode (g, M.empty, M.empty) todo
+        g' = runKS g $ do mapM_ kuelmannNode todo
+                          getGraph
 
-
--}

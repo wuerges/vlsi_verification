@@ -22,5 +22,5 @@ main = do --f <- getContents
                             where [v1, v2] = runIndex $ mapM verilogToInt [r1, r2]
                                   g1 = makeGraphV v1
                                   g2 = makeGraphV v2
-                                  gu = g1 `union` g2
+                                  (gu, _, _) = g1 `union` g2
             [] -> error $ show (lefts ps)

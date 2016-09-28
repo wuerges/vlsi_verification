@@ -19,8 +19,6 @@ type Ctx = Context () Bool
 
 type VG = Gr Bool Bool
 
-type RG = Gr [Int] Bool
-
 -- | Converts a graph to a GraphViz format
 showGraph g = showDot $ fglToDot $ gmap (\(is, n, _, os) -> (is, n, show n, os)) g
 
@@ -138,43 +136,13 @@ inputs g = [n | n <- nodes g, indeg g n == 0]
 outputs :: Gr a b -> [Int]
 outputs g = [n | n <- nodes g, outdeg g n == 0]
 
-
 -- | Renumber the nodes according solely to their inputs,
 -- | so nodes with the same inputs will have the same id
 -- | regardless of the previous.
---renameNodes :: G -> Int -> RG
---renameNodes g i = gmap renameCtxNode g
-    --where renameCtxNode ([], n, (), os)  = ([], n, [n], os)
-          --renameCtxNode (is, n, (), os)  = (is, n+i, [n,n+i], os)
-
-
 
 -- | Joins 2 graphs into one, merging the nodes with the same inputs.
-union :: G -> G -> RG
-union g1 g2 = g'
-  --trace ("\n// union 3: \n" ++ showGraph g1 ++ "\n" ++  showGraph g2 ++ "\n" ++  showGraph g') g' --traceShow g'' g'
-    where
-          g' = mkGraph (n_g1 ++ n_g2) (e_g1 ++ e_g2)
-
-          n_g1 = map (renameNode 0) $ labNodes g1
-          e_g1 = map (renameEdge 0) $ labEdges g1
-
-          n_g2 = map (renameNode (mn + 10)) $ labNodes g2
-          e_g2 = map (renameEdge (mn + 10)) $ labEdges g2
-
-          (_, mn) = nodeRange g1
-
-          renameNode :: Int -> LNode () -> LNode [Int]
-          renameNode i (n, ()) = (rn i n, [n])
-
-          renameEdge :: Int -> LEdge Bool -> LEdge Bool
-          renameEdge i (f, t, v) = (rn i f, rn i t, v)
-
-          rn i n | elem n (inputs g2) = n
-                 | otherwise          = i + n
-
-union2 :: G -> G -> (G, [Node], [Node])
-union2 g1 g2 = (g', outputs g1, map (+(mn + 10)) (outputs g2))
+union :: G -> G -> (G, [Node], [Node])
+union g1 g2 = (g', outputs g1, map (+(mn + 10)) (outputs g2))
   --trace ("\n// union 3: \n" ++ showGraph g1 ++ "\n" ++  showGraph g2 ++ "\n" ++  showGraph g') g' --traceShow g'' g'
     where
           g' = mkGraph (n_g1 ++ n_g2) (e_g1 ++ e_g2)
