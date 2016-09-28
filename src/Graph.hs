@@ -173,6 +173,31 @@ union g1 g2 = g'
           rn i n | elem n (inputs g2) = n
                  | otherwise          = i + n
 
+union2 :: G -> G -> (G, [Node], [Node])
+union2 g1 g2 = (g', outputs g1, map (+(mn + 10)) (outputs g2))
+  --trace ("\n// union 3: \n" ++ showGraph g1 ++ "\n" ++  showGraph g2 ++ "\n" ++  showGraph g') g' --traceShow g'' g'
+    where
+          g' = mkGraph (n_g1 ++ n_g2) (e_g1 ++ e_g2)
+
+          n_g1 = map (renameNode 0) $ labNodes g1
+          e_g1 = map (renameEdge 0) $ labEdges g1
+
+          n_g2 = map (renameNode (mn + 10)) $ labNodes g2
+          e_g2 = map (renameEdge (mn + 10)) $ labEdges g2
+
+          (_, mn) = nodeRange g1
+
+          renameNode :: Int -> LNode () -> LNode ()
+          renameNode i (n, ()) = (rn i n, ())
+
+          renameEdge :: Int -> LEdge Bool -> LEdge Bool
+          renameEdge i (f, t, v) = (rn i f, rn i t, v)
+
+          rn i n | elem n (inputs g2) = n
+                 | otherwise          = i + n
+
+
+
 
 mybfs :: Gr a b -> [Int]
 mybfs g | isEmpty g = []

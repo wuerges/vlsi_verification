@@ -35,6 +35,7 @@ library
                      , random
                      , time
                      , transformers
+                     , monad-memo
   default-language:    Haskell2010
 
 

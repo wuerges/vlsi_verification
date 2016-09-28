@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Kuelmann97 where
 
 import Equivalence
@@ -5,6 +6,8 @@ import Graph
 import BDD
 
 import Control.Monad.State
+import Control.Monad.Memo
+import Control.Monad.Trans.Maybe
 
 import Data.List hiding (union)
 import Data.Graph.Inductive
@@ -134,13 +137,53 @@ mergeNodes b g n1 n2 | n1 == n2 = error "Nodes should be different"
     --
     --
 
+mergeNodesNew :: Node -> Node -> G -> G
+mergeNodesNew n1 n2 g
+  | gelem n1 g && gelem n2 g = (is1, n, v, os1 ++ os2) & g''
+  | otherwise = g
+  where
+    (Just (is1, _, _, os1), g' )  = match n1 g
+    (Just (is2, n, v, os2), g'')  = match n2 g'
+
+kuelmannNode :: (G, M.Map BDD Node) -> Node -> Maybe (G, M.Map BDD Node)
+kuelmannNode (g, m) n1 =
+  do bdd <- calcBDDNode g n1
+     case M.lookup bdd m of
+       Nothing -> return (g, M.insert bdd n1 m)
+       Just n2 -> return ( mergeNodesNew (max n1 n2) (min n1 n2) g
+                    , M.insert bdd (max n1 n2) m)
+
 -- New implementation bellow
 calcBDDNode :: G -> Node -> Maybe BDD
 calcBDDNode g n = do (is, n, nv, os) <- fst $ match n g
-                     bdds <- mapM (calcBDDEdge g) is
-                     return $ mconcat bdds
+                     case is of
+                       [] -> return $ initialBDD n
+                       is' -> do
+                         bdds <- mapM (calcBDDEdge g) is'
+                         return $ mconcat bdds
 
 calcBDDEdge :: G -> (Bool, Node) -> Maybe BDD
 calcBDDEdge g (v, n)
   | v         =             calcBDDNode g n
   | otherwise = negateBDD <$> calcBDDNode g n
+
+calcBDDNodeMemo :: (MonadMemo Node BDD m) => G -> Node -> m BDD
+calcBDDNodeMemo g n =
+  do let Just (is, n, nv, os) = fst $ match n g
+     case is of
+       [] -> return $ initialBDD n
+       is' -> do
+         bdds <- mapM (calcBDDEdgeMemo g) is'
+         return $ mconcat bdds
+
+calcBDDEdgeMemo :: (MonadMemo Node BDD m) => G -> (Bool, Node) -> m BDD
+calcBDDEdgeMemo g (v, n)
+  | v         =             memo (calcBDDNodeMemo g) n
+  | otherwise = negateBDD <$> memo (calcBDDNodeMemo g) n
+
+
+equivKuelmann97_2 :: Checker
+equivKuelmann97_2 g1 g2 os1 os2 = sort (os2' \\ outputs g') == sort os2'
+  where (g, os1', os2') = g1 `union2` g2
+        todo = mybfs g
+        Just (g', m) = foldM kuelmannNode (g, M.empty) todo
