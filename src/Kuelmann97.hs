@@ -18,35 +18,6 @@ import qualified Data.IntMap as I
 
 import qualified Data.Set as S
 
--- | Checks Equivalence of circuits based on Kuelmann97
-{-
-equivKuelmann97M :: Checker
-equivKuelmann97M g1 g2 os1 os2 = --trace (showGraph g') $
-                        checkExits g' os1 os2
-  where g = g1 `union` g2
-        todo = mybfs g
-        g' = snd . snd $ evalState (runStateT (mapM_ kuelmannStep todo) (M.empty, g)) I.empty
--}
---type KS a = State (M.Map BDD Int, I.IntMap BDD, G) a
-
-{-
-getGraph :: KuelmannState G
-getGraph = snd <$> get
-
-putGraph :: RG -> KuelmannState ()
-putGraph g = do (a, _, c) <- get
-                put (a, g, c)
--}
-{-
-updateNode :: BDD -> Int -> KuelmannState ()
-updateNode bdd i = do (m, g) <- get
-                      put (M.insert bdd i m, g)
-
-deleteNode :: BDD -> KuelmannState ()
-deleteNode bdd = do (m, g) <- get
-                    put (M.delete bdd m, g)
--}
-
 -- | Merges 2 nodes in the graph. The first one is mantained, the second one is removed
 -- | and all its sucessors are moved to the first one.
 mergeNodes :: Node -> Node -> G -> G
@@ -104,6 +75,7 @@ calcBDDEdge g (v, n)
   | v         =             calcBDDNode g n
   | otherwise = negateBDD <$> calcBDDNode g n
 
+-- | Checks Equivalence of circuits based on Kuelmann97
 equivKuelmann97_2 :: Checker
 equivKuelmann97_2 g1 g2 os1 os2 =
   case g' of
@@ -111,7 +83,6 @@ equivKuelmann97_2 g1 g2 os1 os2 =
     Just x ->  sort (os2' \\ outputs x) == sort os2'
   where (g, os1', os2') = g1 `union` g2
         todo = mybfs g
-        --Just (g', _, _) = foldM kuelmannNode (g, M.empty, M.empty) todo
         g' = runKS g $ do mapM_ kuelmannNode todo
                           getGraph
 
