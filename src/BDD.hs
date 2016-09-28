@@ -34,6 +34,7 @@ initialBDD v = B Zero v One
 
 
 -- | The State mondad for our BDD memoization
+{-
 type BDDState a = State (M.IntMap BDD) a
 
 --mcreateBDD :: RG -> Int -> BDDState a
@@ -51,40 +52,6 @@ getBDDSon (p, b) | b  =             getBDD p
                  | not b = do mbdd <- getBDD p
                               return $ negateBDD <$> mbdd
 
-
-recreateBDD :: RG -> Int -> BDDState (Maybe BDD)
-recreateBDD g i | indeg g i == 0 = let bdd = initialBDD i
-                                   in do putBDD i bdd
-                                         return $ Just bdd
-                | otherwise =
-                  do msons <- mapM getBDDSon $ lpre g i
-                     if all isJust msons
-                     then do let sons = catMaybes msons
-                                in if (sum $ map bddSize sons) > 50000
-                                      then return Nothing
-                                      else let result = foldl1 bddAnd sons
-                                           in do putBDD i result
-                                                 return $ Just result
-                     else return Nothing
-
-createBDDmb_memo :: RG -> M.IntMap BDD -> Int -> Maybe BDD
-createBDDmb_memo g m n = case M.lookup n m of
-  Just bdd -> Just bdd
-  Nothing -> case lpre g n of
-    [] -> Just $ initialBDD n
-    ps -> if all isJust sons then Just newBDD
-                             else Nothing
-             where bddSon (p, b) | b  =             M.lookup p m
-                                 | not b = negateBDD <$> M.lookup p m
-                   sons = map bddSon ps
-                   newBDD = foldl1 bddAnd $ catMaybes sons
-
-{-
--- | Creates a BDD for the given vertex
--- | If the vertex is a source, the BDD is simple
--- | if the vertex has many sorces, it must join all the sources
-createBDD :: RG -> Int -> BDD
-createBDD rg = memoFix (createBDDmemo rg)
 -}
 
 -- | Negates the BDD (inverts Zeros and Ones)
