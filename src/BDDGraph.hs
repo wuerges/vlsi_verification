@@ -3,6 +3,7 @@ module BDDGraph (NV) where
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Query.DFS (reachable)
 import Control.Monad.State
+import Data.Maybe (fromMaybe)
 
 instance Monoid BDD where
   mempty = bddOne
@@ -11,12 +12,11 @@ instance Monoid BDD where
 data NV = I Node | Zero | One
   deriving (Eq, Ord, Show)
 
-
-type G = (Gr NV Bool)
+type G = Gr NV Bool
 type Ctx = Context NV Bool
 data BDD = BDD G Node
 
-type GST = State G
+type GST a = State G a
 
 runGST :: G -> GST a -> a
 runGST g c = evalState c g
@@ -41,7 +41,7 @@ bundle :: Node -> G -> GST Node
 bundle n g2 = do
   g1 <- get
   let g2' = adjustNodeRange (nodeRange g1) $ subgraph (reachable n g2) g2
-  put (merge g1 g2)
+  put (merge g1 g2')
   return $ adjustRange (nodeRange g1) n
 
 
@@ -63,16 +63,71 @@ negateBDD (BDD g v) = BDD (nmap negateNV g) v
     negateNV One = Zero
     negateNV (I x) = (I x)
 
+larger :: Node -> Node -> GST Ordering
+larger n1 n2 = do
+  g <- get
+  return $ fromMaybe (error "tried to compar inexistent nodes") $
+    compare <$> lab g n1 <*> lab g n2
+
+
+newNode :: GST Node
+newNode = head . newNodes 1 <$> get
+
+bddSucM :: Node -> GST (Node, Node)
+bddSucM n = do
+  ss@[(l, lv), (r, rv)] <- flip lsuc n <$> get
+  case (lv, rv) of
+    (False, True) -> return (l, r)
+    (True, False) -> return (r, l)
+    _ -> error $ "BDD sucs not ok: " ++ show ss
+
+
+
+val :: G -> Node -> NV
+val g n = fromMaybe (error "Could not find node in BDD") $
+  lab g n
+
+
+addParent :: (Node, Node) -> Node -> GST Node
+addParent (l, r) p = do
+  t <- newNode
+  g <- get
+  put $ ([], t, val g p, [(False, l), (True, r)]) & g
+  return t
+
+
+bddAndM :: Node -> Node -> GST Node
+bddAndM 0 _ = return 0
+bddAndM 1 n = return n
+bddAndM n 0 = return 0
+bddAndM n 1 = return n
+bddAndM n1 n2 = do
+  ord <- larger n1 n2
+  case ord of
+    EQ -> do
+      (l1, r1) <- bddSucM n1
+      (l2, r2) <- bddSucM n2
+      l <-bddAndM l1 l2
+      r <-bddAndM r1 r2
+      addParent (l, r) n1
+    LT -> do
+      (l1, r1) <- bddSucM n1
+      l <-bddAndM l1 n2
+      r <-bddAndM r1 n2
+      addParent (l, r) n2
+    GT -> do
+      (l2, r2) <- bddSucM n2
+      l <-bddAndM n1 l2
+      r <-bddAndM n1 r2
+      addParent (l, r) n1
 
 bddAnd :: BDD -> BDD -> BDD
-bddAnd = undefined
-  {-bddAnd b1@(g1, n1) b2@(g2, n2)
-  | nv1 > nv2  = ([is1,
+bddAnd (BDD g1 n1) (BDD g2 n2) = BDD g' t'
+  where (g', t') = runGST g1 (do r <- bundle n2 g2
+                                 t <- bddAndM n1 r
+                                 g <- get
+                                 return (g, t))
 
-  where (ctx1@(is1, _, nv1,os1), g1') =  match n1 g1
-        (ctx2@(is2, _, nv2,os2), g2') =  match n2 g2
-
--}
 
 bddReduce :: BDD -> BDD
 bddReduce = undefined
