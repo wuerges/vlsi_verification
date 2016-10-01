@@ -1,7 +1,8 @@
 module BDDGraph (NV) where
 
 import Data.Graph.Inductive
-
+import Data.Graph.Inductive.Query.DFS (reachable)
+import Control.Monad.State
 
 instance Monoid BDD where
   mempty = bddOne
@@ -10,8 +11,39 @@ instance Monoid BDD where
 data NV = I Node | Zero | One
   deriving (Eq, Ord, Show)
 
-data BDD = BDD (Gr NV Bool) Node
+
+type G = (Gr NV Bool)
 type Ctx = Context NV Bool
+data BDD = BDD G Node
+
+type GST = State G
+
+runGST :: G -> GST a -> a
+runGST g c = evalState c g
+
+adjustRange :: (Node, Node) -> Node -> Node
+adjustRange (_, r) n = n + r
+
+adjustNodeRange :: (Node, Node) -> G -> G
+adjustNodeRange r =
+  gmap (\(ctx@(is, n, v, os)) ->
+      case v of
+        (I x) -> (is, adjustRange r n, (I x), os)
+        _     -> ctx)
+
+contexts :: G -> [Ctx]
+contexts g = map (context g) (nodes g)
+
+merge :: G -> G -> G
+merge g1 g2 = foldr (&) g1 (contexts g2)
+
+bundle :: Node -> G -> GST Node
+bundle n g2 = do
+  g1 <- get
+  let g2' = adjustNodeRange (nodeRange g1) $ subgraph (reachable n g2) g2
+  put (merge g1 g2)
+  return $ adjustRange (nodeRange g1) n
+
 
 
 bddOne  = BDD (mkGraph [(1, One)] []) (-1)
