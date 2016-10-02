@@ -25,8 +25,10 @@ data BDD = BDD { getG :: G , getN :: Node }
 instance Ord NV where
   Zero `compare` Zero = EQ
   Zero `compare` _    = LT
+  _    `compare` Zero = GT
   One  `compare` One  = EQ
   One  `compare` _    = LT
+  _    `compare` One  = GT
   I x  `compare` I y  = x `compare` y
 
 type GST a = State G a
@@ -37,10 +39,13 @@ instance Ord BDD where
     case val g1 n1 `compare` val g2 n2 of
       LT -> LT
       GT -> GT
-      EQ -> case leftOf b1 `compare` leftOf b2 of
-              LT -> LT
-              GT -> GT
-              EQ -> rightOf b1 `compare` rightOf b2
+      EQ ->
+        if (val g1 n1 == Zero) ||  (val g1 n1 == One)
+           then EQ
+           else case leftOf b1 `compare` leftOf b2 of
+                  LT -> LT
+                  GT -> GT
+                  EQ -> rightOf b1 `compare` rightOf b2
 
 instance Eq BDD where
   b1 == b2 = (b1 `compare` b2) == EQ
@@ -68,9 +73,9 @@ runGST g c = evalState c g
 
 adjustRange :: (Node, Node) -> Node -> Node
 adjustRange (_, r) n
-  | n == 0 = trace "\n----ZERO----\n" n
-  | n == 1 = trace "\n----ONE----\n" n
-  | otherwise =  trace "\n----OTHER----\n" $  n + r
+  | n == 0 = n -- trace "\n----ZERO----\n" n
+  | n == 1 = n --trace "\n----ONE----\n" n
+  | otherwise =  n + r --trace "\n----OTHER----\n" $  n + r
 
 adjustEdgeRange :: (Node, Node) -> (Node, Node, Bool) -> (Node, Node, Bool)
 adjustEdgeRange r (o, d, b) = (adjustRange r o, adjustRange r d, b)
@@ -86,7 +91,7 @@ uniq :: Ord a => [a] -> [a]
 uniq = S.toList . S.fromList
 
 merge :: G -> G -> Node -> (G, Node)
-merge g1 g2 n = traceShow (g1, g2, g', n, n') $
+merge g1 g2 n = --traceShow (g1, g2, g', n, n') $
   (g', n')
   where
     ns = map (adjustNodeRange r) $ labNodes g2
@@ -133,8 +138,8 @@ bddSucM :: Node -> GST (Node, Node)
 bddSucM n = do
   g <- get
   ss <- flip lsuc n <$> get
-  let [(l, lv), (r, rv)] = -- uniq ss
-        trace ("ss -> " ++ show ss ++ "-> "++ prettify g) (uniq ss)
+  let [(l, lv), (r, rv)] = uniq ss
+        --trace ("ss -> " ++ show ss ++ "-> "++ prettify g) (uniq ss)
   case (lv, rv) of
     (False, True) -> return (l, r)
     (True, False) -> return (r, l)
@@ -160,7 +165,7 @@ bddAndM 0 _ = return 0
 bddAndM 1 n = return n
 bddAndM n 0 = return 0
 bddAndM n 1 = return n
-bddAndM n1 n2 = trace ("bddAndM " ++ show (n1, n2) ++ "\n") $ do
+bddAndM n1 n2 = do --trace ("bddAndM " ++ show (n1, n2) ++ "\n") $ do
   ord <- larger n1 n2
   case ord of
     EQ -> do
@@ -181,11 +186,11 @@ bddAndM n1 n2 = trace ("bddAndM " ++ show (n1, n2) ++ "\n") $ do
       addParent (l, r) n1
 
 bddAnd :: BDD -> BDD -> BDD
-bddAnd (BDD g1 n1) (BDD g2 n2) = trace (":> bbdAnd " ++ show (n1, n2) ++"\n") $
+bddAnd (BDD g1 n1) (BDD g2 n2) = --trace (":> bbdAnd " ++ show (n1, n2) ++"\n") $
   BDD g' t'
   where (g', t') = runGST g1 (do r <- bundle n2 g2
-                                 t <- trace ("\n--->" ++ show (n1, n2, r)) (bddAndM n1 r)
-                                 --t <- bddAndM n1 r
+                                 --t <- trace ("\n--->" ++ show (n1, n2, r)) (bddAndM n1 r)
+                                 t <- bddAndM n1 r
                                  g <- get
                                  return (g, t))
 
