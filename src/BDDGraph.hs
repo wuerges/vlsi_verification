@@ -133,8 +133,8 @@ bddSucM :: Node -> GST (Node, Node)
 bddSucM n = do
   g <- get
   ss <- flip lsuc n <$> get
-  let [(l, lv), (r, rv)] = uniq ss
-        --trace ("ss -> " ++ show ss ++ "-> "++ prettify g) (uniq ss)
+  let [(l, lv), (r, rv)] = -- uniq ss
+        trace ("ss -> " ++ show ss ++ "-> "++ prettify g) (uniq ss)
   case (lv, rv) of
     (False, True) -> return (l, r)
     (True, False) -> return (r, l)
