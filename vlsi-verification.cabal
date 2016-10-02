@@ -23,6 +23,7 @@ library
                      , Graph      
                      , Algo       
                      , BDD        
+                     , BDDGraph
 
   build-depends:       base
                      , parallel

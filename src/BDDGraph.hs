@@ -1,53 +1,112 @@
-module BDDGraph (NV) where
+--module BDDGraph (BDD, initialBDD, negateBDD ) where
+module BDDGraph where
 
+import Debug.Trace
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Query.DFS (reachable)
 import Control.Monad.State
 import Data.Maybe (fromMaybe)
+import Data.Ord
+import Data.List (intersperse)
+import qualified Data.Set as S
 
 instance Monoid BDD where
   mempty = bddOne
   mappend = bddAnd
 
 data NV = I Node | Zero | One
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Show)
 
 type G = Gr NV Bool
 type Ctx = Context NV Bool
-data BDD = BDD G Node
+data BDD = BDD { getG :: G , getN :: Node }
+  deriving Show
+
+instance Ord NV where
+  Zero `compare` Zero = EQ
+  Zero `compare` _    = LT
+  One  `compare` One  = EQ
+  One  `compare` _    = LT
+  I x  `compare` I y  = x `compare` y
 
 type GST a = State G a
+
+
+instance Ord BDD where
+  b1@(BDD g1 n1) `compare` b2@(BDD g2 n2) =
+    case val g1 n1 `compare` val g2 n2 of
+      LT -> LT
+      GT -> GT
+      EQ -> case leftOf b1 `compare` leftOf b2 of
+              LT -> LT
+              GT -> GT
+              EQ -> rightOf b1 `compare` rightOf b2
+
+instance Eq BDD where
+  b1 == b2 = (b1 `compare` b2) == EQ
+
+
+leftOf :: BDD -> BDD
+leftOf (BDD g n) =
+  runGST g (do (l, _) <- bddSucM n
+               return (BDD g l))
+
+rightOf :: BDD -> BDD
+rightOf (BDD g n) =
+  runGST g (do (_, r) <- bddSucM n
+               return (BDD g r))
 
 runGST :: G -> GST a -> a
 runGST g c = evalState c g
 
+
+--runGST2 :: BDD -> BDD -> (Node -> Node -> GST a) -> a
+--runGST2 (BDD g1 n1) (BDD g2 n2) c =
+--  runGST g1 (do r <- bundle n2 g2
+--                c n1 r)
+
+
 adjustRange :: (Node, Node) -> Node -> Node
-adjustRange (_, r) n = n + r
+adjustRange (_, r) n
+  | n == 0 = trace "\n----ZERO----\n" n
+  | n == 1 = trace "\n----ONE----\n" n
+  | otherwise =  trace "\n----OTHER----\n" $  n + r
+
+adjustAdjRange :: (Node, Node) -> (Bool, Node) -> (Bool, Node)
+adjustAdjRange r (b, n) = (b, adjustRange r n)
 
 adjustNodeRange :: (Node, Node) -> G -> G
-adjustNodeRange r =
-  gmap (\(ctx@(is, n, v, os)) ->
-      case v of
-        (I x) -> (is, adjustRange r n, (I x), os)
-        _     -> ctx)
+adjustNodeRange r g =
+  gmap (\(is, n, v, os) ->
+    ( map (adjustAdjRange r) is
+    , adjustRange r n
+    , v
+    , map (adjustAdjRange r) os)) g
 
 contexts :: G -> [Ctx]
 contexts g = map (context g) (nodes g)
 
-merge :: G -> G -> G
-merge g1 g2 = foldr (&) g1 (contexts g2)
+
+uniq :: Ord a => [a] -> [a]
+uniq = S.toList . S.fromList
+
+merge :: G -> G -> Node -> (G, Node)
+merge g1 g2 n = traceShow (g1, g2, g2', n) $
+  (foldr (&) g1 (contexts g2'), n')
+  where
+    g2' = adjustNodeRange (nodeRange g1) g2
+    --g2' = adjustNodeRange (nodeRange g1) subgraph (reachable n g2) g2
+    n'  = adjustRange (nodeRange g1) n
 
 bundle :: Node -> G -> GST Node
 bundle n g2 = do
   g1 <- get
-  let g2' = adjustNodeRange (nodeRange g1) $ subgraph (reachable n g2) g2
-  put (merge g1 g2')
-  return $ adjustRange (nodeRange g1) n
+  let (g', n') = merge g1 g2 n
+  put g'
+  return n'
 
-
-
-bddOne  = BDD (mkGraph [(1, One)] []) (-1)
-bddZero = BDD (mkGraph [(0, Zero)] []) (-1)
+bddOne  = BDD (mkGraph [(1, One)] []) 1
+bddZero = BDD (mkGraph [(0, Zero)] []) 0
 
 initialBDD :: Int -> BDD
 initialBDD v = BDD g nv
@@ -66,7 +125,7 @@ negateBDD (BDD g v) = BDD (nmap negateNV g) v
 larger :: Node -> Node -> GST Ordering
 larger n1 n2 = do
   g <- get
-  return $ fromMaybe (error "tried to compar inexistent nodes") $
+  return $ fromMaybe (error $ "tried to compare inexistent nodes: " ++ show (g, n1, n2)) $
     compare <$> lab g n1 <*> lab g n2
 
 
@@ -75,7 +134,10 @@ newNode = head . newNodes 1 <$> get
 
 bddSucM :: Node -> GST (Node, Node)
 bddSucM n = do
-  ss@[(l, lv), (r, rv)] <- flip lsuc n <$> get
+  g <- get
+  ss <- flip lsuc n <$> get
+  let [(l, lv), (r, rv)] = uniq ss
+        --trace ("ss -> " ++ show ss ++ "-> "++ prettify g) (uniq ss)
   case (lv, rv) of
     (False, True) -> return (l, r)
     (True, False) -> return (r, l)
@@ -101,7 +163,7 @@ bddAndM 0 _ = return 0
 bddAndM 1 n = return n
 bddAndM n 0 = return 0
 bddAndM n 1 = return n
-bddAndM n1 n2 = do
+bddAndM n1 n2 = trace ("bddAndM " ++ show (n1, n2) ++ "\n") $ do
   ord <- larger n1 n2
   case ord of
     EQ -> do
@@ -122,9 +184,11 @@ bddAndM n1 n2 = do
       addParent (l, r) n1
 
 bddAnd :: BDD -> BDD -> BDD
-bddAnd (BDD g1 n1) (BDD g2 n2) = BDD g' t'
+bddAnd (BDD g1 n1) (BDD g2 n2) = trace (":> bbdAnd " ++ show (n1, n2) ++"\n") $
+  BDD g' t'
   where (g', t') = runGST g1 (do r <- bundle n2 g2
-                                 t <- bddAndM n1 r
+                                 t <- trace ("\n--->" ++ show (n1, n2, r)) (bddAndM n1 r)
+                                 --t <- bddAndM n1 r
                                  g <- get
                                  return (g, t))
 

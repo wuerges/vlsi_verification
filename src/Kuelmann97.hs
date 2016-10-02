@@ -3,7 +3,7 @@ module Kuelmann97 where
 
 import Equivalence
 import Graph
-import BDD
+import BDDGraph (BDD, initialBDD, negateBDD)
 
 import Control.Monad.State
 import Control.Monad.Memo

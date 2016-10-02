@@ -1,4 +1,4 @@
-module BDD where
+module BDD () where
 
 import Verilog
 import Graph

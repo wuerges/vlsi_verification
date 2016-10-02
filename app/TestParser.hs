@@ -1,5 +1,6 @@
 import Lib
 
+import Graph
 import System.Environment
 import System.IO
 import Control.Monad
