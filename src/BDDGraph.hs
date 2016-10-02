@@ -72,16 +72,11 @@ adjustRange (_, r) n
   | n == 1 = trace "\n----ONE----\n" n
   | otherwise =  trace "\n----OTHER----\n" $  n + r
 
-adjustAdjRange :: (Node, Node) -> (Bool, Node) -> (Bool, Node)
-adjustAdjRange r (b, n) = (b, adjustRange r n)
+adjustEdgeRange :: (Node, Node) -> (Node, Node, Bool) -> (Node, Node, Bool)
+adjustEdgeRange r (o, d, b) = (adjustRange r o, adjustRange r d, b)
 
-adjustNodeRange :: (Node, Node) -> G -> G
-adjustNodeRange r g =
-  gmap (\(is, n, v, os) ->
-    ( map (adjustAdjRange r) is
-    , adjustRange r n
-    , v
-    , map (adjustAdjRange r) os)) g
+adjustNodeRange :: (Node, Node) -> (Node, NV) -> (Node, NV)
+adjustNodeRange r (n, v) = (adjustRange r n, v)
 
 contexts :: G -> [Ctx]
 contexts g = map (context g) (nodes g)
@@ -91,12 +86,14 @@ uniq :: Ord a => [a] -> [a]
 uniq = S.toList . S.fromList
 
 merge :: G -> G -> Node -> (G, Node)
-merge g1 g2 n = traceShow (g1, g2, g2', n) $
-  (foldr (&) g1 (contexts g2'), n')
+merge g1 g2 n = traceShow (g1, g2, g', n, n') $
+  (g', n')
   where
-    g2' = adjustNodeRange (nodeRange g1) g2
-    --g2' = adjustNodeRange (nodeRange g1) subgraph (reachable n g2) g2
-    n'  = adjustRange (nodeRange g1) n
+    ns = map (adjustNodeRange r) $ labNodes g2
+    es = map (adjustEdgeRange r) $ labEdges g2
+    g' = insEdges es $ insNodes ns $ g1
+    n' = adjustRange r n
+    r  = nodeRange g1
 
 bundle :: Node -> G -> GST Node
 bundle n g2 = do
