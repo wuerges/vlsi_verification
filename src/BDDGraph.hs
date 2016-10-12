@@ -7,7 +7,7 @@ import Data.Graph.Inductive.Query.DFS (reachable)
 import Control.Monad.State
 import Data.Maybe (fromMaybe)
 import Data.Ord
-import Data.List (intersperse)
+import Data.List (intersperse, sortOn, groupBy)
 import qualified Data.Set as S
 
 instance Monoid BDD where
@@ -63,13 +63,6 @@ rightOf (BDD g n) =
 
 runGST :: G -> GST a -> a
 runGST g c = evalState c g
-
-
---runGST2 :: BDD -> BDD -> (Node -> Node -> GST a) -> a
---runGST2 (BDD g1 n1) (BDD g2 n2) c =
---  runGST g1 (do r <- bundle n2 g2
---                c n1 r)
-
 
 adjustRange :: (Node, Node) -> Node -> Node
 adjustRange (_, r) n
@@ -193,6 +186,27 @@ bddAnd (BDD g1 n1) (BDD g2 n2) = --trace (":> bbdAnd " ++ show (n1, n2) ++"\n") 
                                  t <- bddAndM n1 r
                                  g <- get
                                  return (g, t))
+
+
+getLayers :: G -> [[Node]]
+getLayers g = map (map fst) gs
+  where
+    _:_:ns = sortOn snd $ labNodes g
+    gs = groupBy (\a b -> snd a == snd b) ns
+
+reduceLayerOneM :: Node -> GST ()
+reduceLayerOneM = undefined
+
+reduceLayerM :: [Node] -> GST ()
+reduceLayerM []  = error "empty layer"
+reduceLayerM [x] = return ()
+reduceLayerM (a:b:xs) = undefined
+
+bddReduceM :: Node -> GST ()
+bddReduceM t = do
+  modify $ \g -> subgraph (reachable t g) g
+  layers <- getLayers <$> get
+  mapM_ reduceLayerM layers
 
 
 bddReduce :: BDD -> BDD
