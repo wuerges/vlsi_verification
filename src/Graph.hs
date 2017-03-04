@@ -104,9 +104,22 @@ embedNor :: [String] -> String -> G -> G
 embedNor is o g =
   run_ g $ insMapEdgesM [(Wire i, Wire o, False) | i <- is]
 
+
+
 -- | Inserts a Xor function into the graph
 embedXor :: [String] -> String -> G -> G
-embedXor [i1, i2] o g = g''
+embedXor [i1, i2] o g =
+  embedOr [i1, i2] n2 $
+    embedNand [i1, i2] n1 $
+      embedAnd [n1, n2] o $
+        run_ g $
+          insMapNodeM aux1
+          insMapNodeM aux2
+
+  where
+    aux1 = i1 ++ "_extra_wire"
+    aux2 = i2 ++ "_extra_wire"
+
     where [n1, n2] = newNodes 2 g
           g'  = insNodes [(n1, ()), (n2, ())] g
           g'' = embedOr [i1, i2] n2
