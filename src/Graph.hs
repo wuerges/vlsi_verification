@@ -5,6 +5,7 @@ import Verilog
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Query.DFS
 import Data.Graph.Inductive.Dot
+import Data.Graph.Inductive.NodeMap
 import Data.List
 import Control.Arrow
 import Debug.Trace
@@ -14,7 +15,7 @@ import qualified Data.IntMap as M
 
 -- | The graph that models the circuit after Nand Synthesis Model
 
-data NT = Named String | Zero | One | Auto
+data NT = Wire String | Zero | One
 
 type G = Gr NT Bool
 type Ctx = Context NT Bool
@@ -25,12 +26,15 @@ type VG = Gr (NT, Bool) Bool
 showGraph g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, show n, os)) g
 
 -- | Creates all the nodes of the Graph
-wireNodes :: Verilog -> Ctx
-wireNodes v = [([], n, (), []) | n <- names v]
+--wireNodes :: Verilog -> Ctx
+--wireNodes v = [([], n, (), []) | n <- names v]
 
 -- | Embeds all the wires in the graphs as disconnected nodes
-embedWires :: Verilog -> G -> G
-embedWires v g = foldr (&) g (wireNodes v)
+initGraph :: Verilog -> G -> G
+initGraph v g = g'
+  where m = fromGraph g
+        g' = insMapNodes_ m (Zero:One:named) g
+        named = map Wire $ names v
 
 trues  = repeat True
 falses = repeat False
@@ -58,40 +62,50 @@ negateA = map (first not)
 -- | Negates all output edges of a ctx
 negateCtx (is, n, nv, os) = (is, n, nv, negateA os)
 
+
 -- | Negates all output edges of a node
-negateV :: Int -> G -> G
-negateV n g = let (mc, g') = match n g
-              in case mc of
-                Just ctx -> negateCtx ctx & g'
-                Nothing -> error "could not find vertex in negateV"
+negateV :: String -> G -> G
+negateV name g =
+  let m = fromGraph g
+      (n, _) = mkNode_ m $ Wire name
+      (mc, g') = match n g
+   in case mc of
+        Just ctx -> negateCtx ctx & g'
+        Nothing -> error "could not find vertex in negateV"
 
 -- | Should insert a few edges in the graph.
-embedBuf :: Int -> [Int] -> G -> G
-embedBuf i os g = foldr (\o g -> insEdge (i, o, True) g) g os
+embedBuf :: String -> [String] -> G -> G
+embedBuf i os g =
+  run_ g $ insMapEdgesM [(Wire i, Wire o, True) | o <- os]
 
 -- | Inserts a Not function in the graph.
 -- | Does this by negating all the outputs of a current vertex.
-embedNot i os g = foldr (\o g -> insEdge (i, o, True) g) (foldr negateV g os) os
+embedNot :: String -> [String] -> G -> G
+embedNot i os g =
+  embedBuf i os $ foldr negateV g os
 
 -- | Inserts an And function into the graph
-embedAnd :: [Int] -> Int -> G -> G
-embedAnd is o g = foldr (\i g -> insEdge (i, o, True) g) g is
+embedAnd :: [String] -> String -> G -> G
+embedAnd is o g =
+  run_ g $ insMapEdgesM [(Wire i, Wire o, True) | i <- is]
 
 -- | Inserts a Nand function into the graph
-embedNand :: [Int] -> Int -> G -> G
-embedNand is o g = embedAnd is o (negateV o g)
+embedNand :: [String] -> String -> G -> G
+embedNand is o g =
+  embedAnd is o $ negateV o g
 
 -- | Inserts an Or function into the graph
-embedOr :: [Int] -> Int -> G -> G
-embedOr is o g = embedNor is o (negateV o g)
-
+embedOr :: [String] -> String -> G -> G
+embedOr is o g =
+  embedNor is o $ negateV o g
 
 -- | Inserts a Nor function into the graph
-embedNor :: [Int] -> Int -> G -> G
-embedNor is o g = foldr (\i g -> insEdge (i, o, False) g) g is
+embedNor :: [String] -> String -> G -> G
+embedNor is o g =
+  run_ g $ insMapEdgesM [(Wire i, Wire o, False) | i <- is]
 
 -- | Inserts a Xor function into the graph
-embedXor :: [Int] -> Int -> G -> G
+embedXor :: [String] -> String -> G -> G
 embedXor [i1, i2] o g = g''
     where [n1, n2] = newNodes 2 g
           g'  = insNodes [(n1, ()), (n2, ())] g
@@ -118,7 +132,7 @@ fixSingleNodes g = --trace ("// fix singles \n" ++ showGraph g ++ "\n//fixed:\n"
     g'
   where g' = foldr fixSingleNode g (nodes g)
 
-makeGraphV v = fixSingleNodes $ foldr embedF (embedWires v empty) (reverse $ _functions v)
+makeGraphV v = fixSingleNodes $ foldr embedF (initGraph v empty) (reverse $ _functions v)
 
 {-
 -- | Checks if a node is an output
