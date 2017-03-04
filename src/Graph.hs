@@ -15,12 +15,13 @@ import qualified Data.IntMap as M
 
 -- | The graph that models the circuit after Nand Synthesis Model
 
-data NT = Wire String | Zero | One
+data NT = Wire String | ValZero | ValOne
+  deriving (Eq, Ord, Show)
 
 type G = Gr NT Bool
 type Ctx = Context NT Bool
 
-type VG = Gr (NT, Bool) Bool
+--type VG = Gr (NT, Bool) Bool
 
 -- | Converts a graph to a GraphViz format
 showGraph g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, show n, os)) g
@@ -33,7 +34,7 @@ showGraph g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, show n, os))
 initGraph :: Verilog -> G -> G
 initGraph v g = g'
   where m = fromGraph g
-        g' = insMapNodes_ m (Zero:One:named) g
+        g' = insMapNodes_ m (ValZero:ValOne:named) g
         named = map Wire $ names v
 
 trues  = repeat True
@@ -112,9 +113,9 @@ embedXor [i1, i2] o g =
   embedOr [i1, i2] n2 $
     embedNand [i1, i2] n1 $
       embedAnd [n1, n2] o $
-        run_ g $
-          insMapNodeM aux1
-          insMapNodeM aux2
+        run_ g $ do
+          insMapNodeM $ Wire n1
+          insMapNodeM $ Wire n2
   where
     n1 = i1 ++ "_extra_wire"
     n2 = i2 ++ "_extra_wire"
@@ -126,9 +127,17 @@ embedXor [i1, i2] o g =
               $ embedNand [i1, i2] n1
               $ embedAnd [n1, n2] o g'
               -}
-embedXor (i1:i2:is) o g = g'
+embedXor (i1:i2:is) o g =
+  embedXor [i1,i2] n $
+    embedXor (n:is) o $
+      run_ g $ insMapNodeM $ Wire n
+        where n = i1 ++ "_extra_wire"
+
+{-
+  g'
     where [n]  = newNodes 1 g
           g'   = embedXor (n:is) o $ embedXor [i1, i2] n $ insNode (n, ()) g
+          -}
 
 -- | Inserts a Xnor gate into the graph
 embedXnor is o g = embedXor is o (negateV o g)
@@ -146,6 +155,7 @@ fixSingleNodes g = --trace ("// fix singles \n" ++ showGraph g ++ "\n//fixed:\n"
     g'
   where g' = foldr fixSingleNode g (nodes g)
 
+makeGraphV :: Verilog -> G
 makeGraphV v = fixSingleNodes $ foldr embedF (initGraph v empty) (reverse $ _functions v)
 
 {-
@@ -170,32 +180,6 @@ outputs g = [n | n <- nodes g, outdeg g n == 0]
 -- | so nodes with the same inputs will have the same id
 -- | regardless of the previous.
 
--- | Joins 2 graphs into one, merging the nodes with the same inputs.
-union :: G -> G -> (G, [Node], [Node])
-union g1 g2 = (g', outputs g1, map (+(mn + 10)) (outputs g2))
-  --trace ("\n// union 3: \n" ++ showGraph g1 ++ "\n" ++  showGraph g2 ++ "\n" ++  showGraph g') g' --traceShow g'' g'
-    where
-          g' = mkGraph (n_g1 ++ n_g2) (e_g1 ++ e_g2)
-
-          n_g1 = map (renameNode 0) $ labNodes g1
-          e_g1 = map (renameEdge 0) $ labEdges g1
-
-          n_g2 = map (renameNode (mn + 10)) $ labNodes g2
-          e_g2 = map (renameEdge (mn + 10)) $ labEdges g2
-
-          (_, mn) = nodeRange g1
-
-          renameNode :: Int -> LNode () -> LNode ()
-          renameNode i (n, ()) = (rn i n, ())
-
-          renameEdge :: Int -> LEdge Bool -> LEdge Bool
-          renameEdge i (f, t, v) = (rn i f, rn i t, v)
-
-          rn i n | elem n (inputs g2) = n
-                 | otherwise          = i + n
-
-
-
 
 mybfs :: Gr a b -> [Int]
 mybfs g | isEmpty g = []
@@ -208,19 +192,24 @@ mybfs g | isEmpty g = []
 -- | produces the outputs, in order.
 
 simulate1 :: Context () Bool -> M.IntMap Bool -> M.IntMap Bool
+simulate1 = undefined
+{-
 simulate1 ([], n, (), _) m = case M.lookup n m of
                                 Just v ->  m
                                 Nothing -> error "Value for n should have been set."
 simulate1 (is, n, (), _) m = M.insert n v m
   where
     v = and $ [m M.! i /= vi | (vi, i) <- is]
-
+-}
 
 simulate :: [(Int, Bool)] -> G -> [(Int, Bool)]
+simulate = undefined
+  {-
 simulate input_values g = [(o, m' M.! o) | o <- outputs g]
   where
     m  = M.fromList input_values
     m' = ufold simulate1 m g
+    -}
 
 randomSimulateIO :: G -> IO [(Int, Bool)]
 randomSimulateIO g = do

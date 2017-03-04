@@ -7,7 +7,6 @@ import BDDGraph (BDD, initialBDD, negateBDD)
 
 import Control.Monad.State
 import Control.Monad.Memo
-import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Class
 
 import Data.List hiding (union)
@@ -18,37 +17,53 @@ import qualified Data.IntMap as I
 
 import qualified Data.Set as S
 
+type G2 = Gr (NT, Int, Maybe BDD) Bool
+-- | Joins 2 graphs into one, merging the nodes with the same inputs.
+union :: G -> G -> G2
+union g1 g2 = g'
+    where
+      g1' = nmap (\nt -> (nt, 0, Nothing)) g1
+      g2' = nmap (\nt -> (nt, 1, Nothing)) g2
+      new_nodes = labNodes g1' ++ labNodes g2'
+      new_edges = labEdges g1' ++ labEdges g2'
+      g' = mkGraph new_nodes new_edges
+
 -- | Merges 2 nodes in the graph. The first one is mantained, the second one is removed
 -- | and all its sucessors are moved to the first one.
-mergeNodes :: Node -> Node -> G -> G
-mergeNodes n1 n2 g
-  | gelem n1 g && gelem n2 g = (is1, n, v, os1 ++ os2) & g''
-  | otherwise = g
+mergeNodes :: Node -> Node -> G2 -> G2
+mergeNodes n1 n2 g = insEdges es' $ delEdges des g
   where
-    (Just (is1, _, _, os1), g' )  = match n1 g
-    (Just (is2, n, v, os2), g'')  = match n2 g'
+    es = out g n2
+    des = [(o, d) | (o, d, l) <- es]
+    es' = [(n1, d, l) | (o, d, l) <- es]
 
 
-type BDDState = State (M.Map Node BDD)
-type KS = StateT (G, M.Map BDD Node) (MaybeT BDDState)
+--type BDDState = State (M.Map Node BDD)
+type KS a = State (G2, M.Map BDD Node) a
 
-runBDD :: MaybeT BDDState a -> Maybe a
-runBDD bs = evalState (runMaybeT bs) M.empty
+--runBDD :: MaybeT BDDState a -> Maybe a
+--runBDD bs = evalState (runMaybeT bs) M.empty
 
-runKS :: G -> KS a -> Maybe a
-runKS g ks = fst <$> (runBDD $ runStateT ks (g, M.empty))
+checkResult :: KS (Either String Bool)
+checkResult = return $ Left "Dummy check"
 
 kuelmannNode :: Node -> KS ()
 kuelmannNode n1 =
   do (g, m) <- get
+     let Just (nt, ord, bdd) = lab g n1
+     return ()
+       {-
+
      mbdd <- lift $ calcBDDNode g n1
      case M.lookup mbdd m of
        Nothing -> put (g, M.insert mbdd n1 m)
        Just n2 -> put (mergeNodes (max n1 n2) (min n1 n2) g, M.insert mbdd (max n1 n2) m)
+-}
 
-getGraph :: KS G
+getGraph :: KS G2
 getGraph = fst <$> get
 
+{-
 bddLookup :: Node -> BDDState (Maybe BDD)
 bddLookup n = M.lookup n <$> get
 
@@ -74,15 +89,14 @@ calcBDDEdge :: G -> (Bool, Node) -> MaybeT BDDState BDD
 calcBDDEdge g (v, n)
   | v         =             calcBDDNode g n
   | otherwise = negateBDD <$> calcBDDNode g n
-
+-}
 -- | Checks Equivalence of circuits based on Kuelmann97
 equivKuelmann97_2 :: Checker
-equivKuelmann97_2 g1 g2 os1 os2 =
-  case g' of
-    Nothing -> error "could not finish"
-    Just x ->  sort (os2' \\ outputs x) == sort os2'
-  where (g, os1', os2') = g1 `union` g2
+equivKuelmann97_2 v1 v2 = r
+  where g = (makeGraphV v1) `union` (makeGraphV v2)
         todo = mybfs g
-        g' = runKS g $ do mapM_ kuelmannNode todo
-                          getGraph
+        r = flip evalState (g, M.empty) $ do
+          mapM_ kuelmannNode todo
+          checkResult
+
 

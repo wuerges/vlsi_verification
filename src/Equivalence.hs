@@ -13,23 +13,12 @@ import Debug.Trace
 import qualified Data.Map as M
 
 
-type EqRes = Maybe Bool
-
-success :: EqRes -> Bool
-success Nothing  = False
-success (Just _) = True
-
 -- | Type required for the checker functions
-type Checker = G -> G -> [Int] -> [Int] -> Bool
-
--- | Checks the equivalence between 2 verilog circuits
-equiv :: Checker -> Verilog String -> Verilog String -> Bool
-equiv f r1 r2 = f (makeGraphV v1) (makeGraphV v2) (_outputs v1) (_outputs v2)
-    where [v1, v2] = runIndex $ mapM verilogToInt [r1, r2]
+type Checker = Verilog -> Verilog -> Either String Bool
 
 -- | Stub for a checker. Always returns False
-equivG :: Checker
-equivG _ _ _ _ = False
+equiv :: Checker
+equiv _ _ = Left "Dummy checker"
 
 
 -- | Checks Equivalence by calculating BDDs of all outputs.

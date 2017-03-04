@@ -20,8 +20,8 @@ main = do --f <- getContents
                             --hPutStrLn stderr $ "// 10 " ++ show (createBDD gu 10)
                             --hPutStrLn stderr $ "// 3  " ++ show (createBDD gu 3)
                             --hPutStrLn stderr $ show (calculateAllBDDs gu)
-                            where [v1, v2] = runIndex $ mapM verilogToInt [r1, r2]
-                                  g1 = makeGraphV v1
-                                  g2 = makeGraphV v2
-                                  (gu, _, _) = g1 `union` g2
+                            where
+                              g1 = makeGraphV r1
+                              g2 = makeGraphV r2
+                              gu = g1 `union` g2
             [] -> error $ show (lefts ps)
