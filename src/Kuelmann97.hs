@@ -6,8 +6,9 @@ import Graph
 import BDDGraph (BDD, initialBDD, negateBDD)
 
 import Control.Monad.State
-import Control.Monad.Memo
+import Control.Monad.Writer
 import Control.Monad.Trans.Class
+import Data.Maybe
 
 import Data.List hiding (union)
 import Data.Graph.Inductive
@@ -18,6 +19,9 @@ import qualified Data.IntMap as I
 import qualified Data.Set as S
 
 type G2 = Gr (NT, Int, Maybe BDD) Bool
+
+getBDD (_, _, bdd) = bdd
+
 -- | Joins 2 graphs into one, merging the nodes with the same inputs.
 union :: G -> G -> G2
 union g1 g2 = g'
@@ -30,66 +34,57 @@ union g1 g2 = g'
 
 -- | Merges 2 nodes in the graph. The first one is mantained, the second one is removed
 -- | and all its sucessors are moved to the first one.
-mergeNodes :: Node -> Node -> G2 -> G2
-mergeNodes n1 n2 g = insEdges es' $ delEdges des g
+-- | TODO Must check that always removes from same subgraph
+mergeNodes :: Node -> Node -> G2 -> (Node, G2)
+mergeNodes n1 n2 g = (n1, insEdges es' $ delEdges des g)
   where
     es = out g n2
     des = [(o, d) | (o, d, l) <- es]
     es' = [(n1, d, l) | (o, d, l) <- es]
 
+mergeNodesM n1 n2 = do
+  (g, m) <- get
+  let (n, g') = mergeNodes n1 n2 g
+  put (g', m)
+  return n
 
---type BDDState = State (M.Map Node BDD)
+
+--type KS a = WriterT String (State (G2, M.Map BDD Node)) a
 type KS a = State (G2, M.Map BDD Node) a
 
---runBDD :: MaybeT BDDState a -> Maybe a
---runBDD bs = evalState (runMaybeT bs) M.empty
-
 checkResult :: KS (Either String Bool)
-checkResult = return $ Left "Dummy check"
+checkResult = do
+  (g, m) <- get
+  let outs = [or | (n, (nt, or, _)) <- labNodes g, outdeg g n == 0]
+  case (length $ nub $ outs) of
+    1 -> return $ Right True
+    _ -> return $ Right False
+
+storeBDD bdd n = do
+  (g, m) <- get
+  put (g, M.insert bdd n m)
 
 kuelmannNode :: Node -> KS ()
 kuelmannNode n1 =
   do (g, m) <- get
-     let Just (nt, ord, bdd) = lab g n1
-     return ()
-       {-
+     case calcBDDNode g n1 of
+       Nothing -> return () --tell $ "Could not create BDD for " ++ show n1
+       Just bdd -> case M.lookup bdd m of
+                     Nothing -> storeBDD bdd n1
+                     Just n2 -> do nr <- mergeNodesM n1 n2
+                                   storeBDD bdd nr
 
-     mbdd <- lift $ calcBDDNode g n1
-     case M.lookup mbdd m of
-       Nothing -> put (g, M.insert mbdd n1 m)
-       Just n2 -> put (mergeNodes (max n1 n2) (min n1 n2) g, M.insert mbdd (max n1 n2) m)
--}
+calcBDDNode :: G2 -> Node -> Maybe BDD
+calcBDDNode g n = r
+  where
+    is = [(,) v <$> (getBDD . fromJust $ lab g o) | (o, d, v) <- inn g n]
+    r = case sequence is of
+          Just x -> Just $ mconcat $ map testNegate x
+          Nothing -> Nothing
 
-getGraph :: KS G2
-getGraph = fst <$> get
+    testNegate (True, bdd) = bdd
+    testNegate (False, bdd) = negateBDD bdd
 
-{-
-bddLookup :: Node -> BDDState (Maybe BDD)
-bddLookup n = M.lookup n <$> get
-
-bddPut :: Node -> BDD -> BDDState BDD
-bddPut n bdd = do modify (M.insert n bdd)
-                  return bdd
-
-calcBDDNode :: G -> Node -> MaybeT BDDState BDD
-calcBDDNode g n =
-  do mbdd <- lift $ bddLookup n
-     case mbdd of
-       Just bdd -> return bdd
-       Nothing ->
-         do (is, n, nv, os) <- MaybeT . return $ fst $ match n g
-            calcBDDEdges g n is
-
-calcBDDEdges :: G -> Node -> [(Bool, Node)] -> MaybeT BDDState BDD
-calcBDDEdges _ n [] = lift $ bddPut n (initialBDD n)
-calcBDDEdges g n is = do bdds <- mapM (calcBDDEdge g) is
-                         lift $ bddPut n (mconcat bdds)
-
-calcBDDEdge :: G -> (Bool, Node) -> MaybeT BDDState BDD
-calcBDDEdge g (v, n)
-  | v         =             calcBDDNode g n
-  | otherwise = negateBDD <$> calcBDDNode g n
--}
 -- | Checks Equivalence of circuits based on Kuelmann97
 equivKuelmann97_2 :: Checker
 equivKuelmann97_2 v1 v2 = r
@@ -98,5 +93,3 @@ equivKuelmann97_2 v1 v2 = r
         r = flip evalState (g, M.empty) $ do
           mapM_ kuelmannNode todo
           checkResult
-
-
