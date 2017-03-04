@@ -115,16 +115,17 @@ embedXor [i1, i2] o g =
         run_ g $
           insMapNodeM aux1
           insMapNodeM aux2
-
   where
-    aux1 = i1 ++ "_extra_wire"
-    aux2 = i2 ++ "_extra_wire"
+    n1 = i1 ++ "_extra_wire"
+    n2 = i2 ++ "_extra_wire"
+      {-
 
     where [n1, n2] = newNodes 2 g
           g'  = insNodes [(n1, ()), (n2, ())] g
           g'' = embedOr [i1, i2] n2
               $ embedNand [i1, i2] n1
               $ embedAnd [n1, n2] o g'
+              -}
 embedXor (i1:i2:is) o g = g'
     where [n]  = newNodes 1 g
           g'   = embedXor (n:is) o $ embedXor [i1, i2] n $ insNode (n, ()) g
