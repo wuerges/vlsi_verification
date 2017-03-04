@@ -34,19 +34,23 @@ bddAnd :: BDD -> BDD -> BDD
 
 bddAnd Zero _ = Zero
 bddAnd _ Zero = Zero
-bddAnd One  b = b
-bddAnd b  One = b
+bddAnd One  b = bddReduce b
+bddAnd b  One = bddReduce b
 
-bddAnd b1@(B z1 v1 o1) b2@(B z2 v2 o2) | v1 > v2 = B (bddReduce $ bddAnd z1 b2) v1 (bddReduce $ bddAnd o1 b2)
-                                       | v1 == v2 = B (bddReduce $ bddAnd z1 z2) v1 (bddReduce $ bddAnd o1 o2)
-                                       | v1 < v2 = B (bddReduce $ bddAnd z2 b1) v2 (bddReduce $ bddAnd o2 b1)
+bddAnd b1@(B z1 v1 o1) b2@(B z2 v2 o2)
+  | v1 > v2 = bddReduce $ B (bddAnd z1 b2) v1 (bddAnd o1 b2)
+  | v1 == v2 = bddReduce $ B (bddAnd z1 z2) v1 (bddAnd o1 o2)
+  | v1 < v2 = bddReduce $ B (bddAnd z2 b1) v2 (bddAnd o2 b1)
 
 -- | Reduces a OBDD into a ORBDD
 bddReduce :: BDD -> BDD
 bddReduce Zero = Zero
 bddReduce One = One
-bddReduce b@(B z v o) | bddReduce z == bddReduce o    = z
-                      | otherwise                    = b
+bddReduce b@(B z v o)
+  | zr == or   = zr
+  | otherwise = B zr v or
+  where zr = bddReduce z
+        or = bddReduce o
 
 -- | Calculates the size of a BDD
 bddSize :: BDD -> Int

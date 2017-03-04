@@ -13,28 +13,30 @@ import qualified Data.Set as S
 import qualified Data.IntMap as M
 
 -- | The graph that models the circuit after Nand Synthesis Model
-type G = Gr () Bool
-type Ctx = Context () Bool
 
+data NT = Named String | Zero | One | Auto
 
-type VG = Gr Bool Bool
+type G = Gr NT Bool
+type Ctx = Context NT Bool
+
+type VG = Gr (NT, Bool) Bool
 
 -- | Converts a graph to a GraphViz format
-showGraph g = showDot $ fglToDot $ gmap (\(is, n, _, os) -> (is, n, show n, os)) g
+showGraph g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, show n, os)) g
 
 -- | Creates all the nodes of the Graph
-wireNodes :: Verilog Int -> [Context () Bool]
+wireNodes :: Verilog -> Ctx
 wireNodes v = [([], n, (), []) | n <- names v]
 
 -- | Embeds all the wires in the graphs as disconnected nodes
-embedWires :: Verilog Int -> G -> G
+embedWires :: Verilog -> G -> G
 embedWires v g = foldr (&) g (wireNodes v)
 
 trues  = repeat True
 falses = repeat False
 
 -- | Embeds a Function in the graph.
-embedF :: Function Int -> G -> G
+embedF :: Function -> G -> G
 embedF (Fun op os is) g =
     case op of
     --case trace ("// embedF -> " ++ show (op, os, is) ++ "\n" ++  showGraph g)  op of

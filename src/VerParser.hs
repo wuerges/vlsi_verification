@@ -1,4 +1,4 @@
-module VerParser where 
+module VerParser where
 
 import Text.ParserCombinators.Parsec
 import Verilog
@@ -23,19 +23,19 @@ semi        = P.semi lexer
 data CompExpr = WireExpr [String]
                 | InputExpr [String]
                 | OutputExpr [String]
-                | FunctionExpr (Function String)
+                | FunctionExpr Function
 
-makeVerilog :: [CompExpr] -> Verilog String
+makeVerilog :: [CompExpr] -> Verilog
 makeVerilog = foldl addVerilog emptyVerilog
 
-addVerilog :: Verilog String -> CompExpr -> Verilog String
+addVerilog :: Verilog -> CompExpr -> Verilog
 addVerilog v (WireExpr ws)      = v
 addVerilog v (InputExpr ws)     = v { _inputs    = _inputs v ++ ws }
 addVerilog v (OutputExpr ws)    = v { _outputs   = _outputs v ++ ws }
 addVerilog v (FunctionExpr f)   = v { _functions = f:_functions v }
 
 literal :: GenParser Char st String
-literal = string "1'b0" >> whiteSpace >> return "1'b0" 
+literal = string "1'b0" >> whiteSpace >> return "1'b0"
 
 
 parseWire :: GenParser Char st String
@@ -44,14 +44,14 @@ parseWire = identifier <|> literal
 -- Syntax
 moduleExpr :: GenParser Char st (String, [String])
 moduleExpr = do whiteSpace
-                reserved "module"  
+                reserved "module"
                 name <- identifier
                 ports <- parens (commaSep parseWire)
                 _ <- semi
                 return (name, ports)
 
 parseOp :: GenParser Char st Op
-parseOp =    (reserved "and"  >> return And ) 
+parseOp =    (reserved "and"  >> return And )
          <|> (reserved "or"   >> return Or  )
          <|> (reserved "buf"  >> return Buf )
          <|> (reserved "xor"  >> return Xor )
@@ -91,12 +91,12 @@ endModuleExpr :: GenParser Char st ()
 endModuleExpr = do reserved "endmodule"
                    return ()
 
-topModule :: GenParser Char st (Verilog String)
+topModule :: GenParser Char st Verilog
 topModule = do (name, ports) <- moduleExpr
                es <- many verilogExpr
                endModuleExpr
                eof
                return $  makeVerilog es
 
-parseVerilog :: String -> IO (Either ParseError (Verilog String))
+parseVerilog :: String -> IO (Either ParseError Verilog)
 parseVerilog = parseFromFile topModule

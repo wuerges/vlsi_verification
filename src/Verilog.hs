@@ -6,25 +6,13 @@ import qualified Data.Map as M
 import Data.Maybe
 import Control.Monad.State
 
-data Function a = Fun { _op  :: Op
-                      , _out :: [a]
-                      , _in  :: [a] }
+data Function = Fun { _op  :: Op
+                    , _out :: [String]
+                    , _in  :: [String] }
     deriving (Ord, Eq, Show)
 
-type IdxState a = State (Int, M.Map String Int) a
-
-nextIdx :: String -> IdxState Int
-nextIdx name = do
-  (s, idx) <- get
-  case M.lookup name idx of
-    Just x  -> return x
-    Nothing -> do put (s', M.insert name s' idx)
-                  return s'
-                    where s' = s + 1
-
-
-runIndex :: IdxState a -> a
-runIndex = (flip evalState) (0, M.empty)
+namesFun :: Function -> [String]
+namesFun (Fun _ o i) = o ++ i
 
 data Op = And
         | Or
@@ -36,37 +24,20 @@ data Op = And
         | Nand
     deriving (Ord, Eq, Show)
 
-makeFunction :: Op -> [a] -> Function a
+makeFunction :: Op -> [String] -> Function
 makeFunction Buf ps = Fun Buf (init ps) [last ps]
 makeFunction Not ps = Fun Not (init ps) [last ps]
 makeFunction op (p:ps) = Fun op [p] ps
 makeFunction _ _      = error "Function must have at least 1 input and 1 output wire"
 
-functionToInt :: Function String -> IdxState (Function Int)
-functionToInt f@(Fun{..}) = do
-  outs  <- mapM nextIdx _out :: IdxState [Int]
-  ins   <- mapM nextIdx _in
-  return $ f { _out = outs, _in = ins }
-
-data Verilog a = Verilog { _inputs :: [a]
-                         , _outputs :: [a]
-                         , _functions :: [Function a]
-                         }
+data Verilog = Verilog { _inputs :: [String]
+                       , _outputs :: [String]
+                       , _functions :: [Function]
+                       }
     deriving Show
 
-names :: Verilog a -> [a]
+names :: Verilog -> [String]
 names v = _inputs v ++ _outputs v ++ concatMap namesFun (_functions v)
-
-
-verilogToInt :: Verilog String -> IdxState (Verilog Int)
-verilogToInt v@(Verilog{..}) = do
-  nis <- mapM nextIdx _inputs
-  nos <- mapM nextIdx _outputs
-  nfs <- mapM functionToInt _functions
-  return $ Verilog nis nos nfs
-
-namesFun :: Function a -> [a]
-namesFun f = _out f ++ _in f
 
 emptyVerilog = Verilog { _inputs = []
                        , _outputs = []
