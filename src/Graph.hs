@@ -142,6 +142,7 @@ embedXor (i1:i2:is) o g =
 -- | Inserts a Xnor gate into the graph
 embedXnor is o g = embedXor is o (negateV o g)
 
+
 -- | Replaces a node with only one input and one output with an edge.
 fixSingleNode :: Int -> G -> G
 fixSingleNode n g =  case match n g of
@@ -157,16 +158,6 @@ fixSingleNodes g = --trace ("// fix singles \n" ++ showGraph g ++ "\n//fixed:\n"
 
 makeGraphV :: Verilog -> G
 makeGraphV v = fixSingleNodes $ foldr embedF (initGraph v empty) (reverse $ _functions v)
-
-{-
--- | Checks if a node is an output
-outut :: Gr a b -> Int -> Bool
-outut g n = outdeg g n == 0
-
--- | Checks if a node is an input
-input :: Gr a b -> Int -> Bool
-input g n = indeg g n == 0
--}
 
 -- | Calculates the nodes without input edges
 inputs :: Gr a b -> [Int]

@@ -1,4 +1,4 @@
-module BDD () where
+module BDD (BDD, initialBDD, bddAnd, negateBDD, bddOne, bddZero) where
 
 import Verilog
 import Graph
@@ -12,15 +12,19 @@ import qualified Data.IntMap as M
 import Control.Monad.State
 
 -- | A bdd has a source and a graph
-data BDD = Zero | One | B BDD Int BDD
+data BDD = Zero | One | B BDD String BDD
   deriving (Eq, Ord, Show)
 
 instance Monoid BDD where
   mempty = One
   mappend = bddAnd
 
+
+bddZero = Zero
+bddOne = One
+
 -- | Creates an initial BDD with a 0 and 1 child for a variable v
-initialBDD :: Int -> BDD
+initialBDD :: String -> BDD
 initialBDD v = B Zero v One
 
 -- | Negates the BDD (inverts Zeros and Ones)

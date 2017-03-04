@@ -3,7 +3,7 @@ module Kuelmann97 where
 
 import Equivalence
 import Graph
-import BDDGraph (BDD, initialBDD, negateBDD)
+import BDD --Graph (BDD, initialBDD, negateBDD, bddOne, bddAnd)
 
 import Control.Monad.State
 import Control.Monad.Writer
@@ -20,7 +20,18 @@ import qualified Data.Set as S
 
 type G2 = Gr (NT, Int, Maybe BDD) Bool
 
-getBDD (_, _, bdd) = bdd
+sel1 (x, _, _) = x
+sel2 (_, x, _) = x
+sel3 (_, _, x) = x
+
+
+getBDD :: G2 -> Node -> Maybe BDD
+getBDD g n = join $ sel3 <$> lab g n
+
+
+getBDDfromEdge g (o, _, v)
+  | v =  getBDD g o
+  | not v = negateBDD <$> getBDD g o
 
 -- | Joins 2 graphs into one, merging the nodes with the same inputs.
 -- TODO THIS IS COMPLETELY WRONG
@@ -76,15 +87,16 @@ kuelmannNode n1 =
                                    storeBDD bdd nr
 
 calcBDDNode :: G2 -> Node -> Maybe BDD
-calcBDDNode g n = r
+calcBDDNode g n
+  | indeg g n == 0 = Just $ case nt of
+                              Wire x -> initialBDD x
+                              ValZero -> bddZero
+                              ValOne -> bddOne
+  | otherwise = r
   where
-    is = [(,) v <$> (getBDD . fromJust $ lab g o) | (o, d, v) <- inn g n]
-    r = case sequence is of
-          Just x -> Just $ mconcat $ map testNegate x
-          Nothing -> Nothing
-
-    testNegate (True, bdd) = bdd
-    testNegate (False, bdd) = negateBDD bdd
+    Just (nt, n', _) = lab g n
+    is = map (getBDDfromEdge g) $ inn g n
+    r = foldr bddAnd bddOne <$> sequence is
 
 -- | Checks Equivalence of circuits based on Kuelmann97
 equivKuelmann97_2 :: Checker
