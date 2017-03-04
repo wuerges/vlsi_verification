@@ -23,6 +23,7 @@ type G2 = Gr (NT, Int, Maybe BDD) Bool
 getBDD (_, _, bdd) = bdd
 
 -- | Joins 2 graphs into one, merging the nodes with the same inputs.
+-- TODO THIS IS COMPLETELY WRONG
 union :: G -> G -> G2
 union g1 g2 = g'
     where
