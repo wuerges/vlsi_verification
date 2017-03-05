@@ -21,6 +21,11 @@ type G = Gr Val Bool
 type Ctx = Context Val Bool
 
 
+val :: G -> Node -> Val
+val g n = v
+  where
+    Just v = lab g n
+
 type GState a = StateT G IdxState a
 
 --type VG = Gr (NT, Bool) Bool

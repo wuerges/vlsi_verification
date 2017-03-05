@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Kuelmann97 where
 
+import Verilog
 import Equivalence
 import Graph
 import BDD --Graph (BDD, initialBDD, negateBDD, bddOne, bddAnd)
@@ -18,97 +19,106 @@ import qualified Data.IntMap as I
 
 import qualified Data.Set as S
 
-{-
-data JoinNode = JN { rank :: Int
-                   , val :: NT
-                   , bdd :: Maybe BDD }
+--type KS a = WriterT String (State (G, M.Map BDD Node)) a
+type KS a = State (G, M.Map BDD Node, M.Map Node BDD) a
 
-type G2 = Gr JoinNode Bool
+getNodeBddM :: KS (M.Map Node BDD)
+getNodeBddM = do
+  (_, _, m) <- get
+  return m
 
+getBddNodeM :: KS (M.Map BDD Node)
+getBddNodeM = do
+  (_, m, _) <- get
+  return m
 
-getBDD :: G2 -> Node -> Maybe BDD
-getBDD g n = join $ bdd <$> lab g n
+getBDD :: Node -> KS (Maybe BDD)
+getBDD n = do
+  M.lookup n <$> getNodeBddM
 
+getBDDfromEdge :: LEdge Bool -> KS (Maybe BDD)
+getBDDfromEdge (o, _, v) = do
+  bdd <- getBDD o
+  if v then return bdd
+       else return $ negateBDD <$> bdd
 
-getBDDfromEdge g (o, _, v)
-  | v =  getBDD g o
-  | not v = negateBDD <$> getBDD g o
-
--- | Joins 2 graphs into one, merging the nodes with the same inputs.
--- TODO THIS IS COMPLETELY WRONG
-union :: G -> G -> G2
-union g1 g2 = g'
-    where
-      g1' = nmap (\nt -> JN 0 nt Nothing) g1
-      g2' = nmap (\nt -> JN 1 nt Nothing) g2
-      new_nodes = labNodes g1' ++ labNodes g2'
-      new_edges = labEdges g1' ++ labEdges g2'
-      g' = mkGraph new_nodes new_edges
-
--- | Merges 2 nodes in the graph. The first one is mantained, the second one is removed
--- | and all its sucessors are moved to the first one.
--- | TODO Must check that always removes from same subgraph
-mergeNodes :: Node -> Node -> G2 -> (Node, G2)
-mergeNodes n1 n2 g = (n1, insEdges es' $ delEdges des g)
-  where
-    es = out g n2
-    des = [(o, d) | (o, d, l) <- es]
-    es' = [(n1, d, l) | (o, d, l) <- es]
-
-mergeNodesM n1 n2 = do
-  (g, m) <- get
-  let (n, g') = mergeNodes n1 n2 g
-  put (g', m)
-  return n
+getG :: KS G
+getG = do
+  (g, _, _) <- get
+  return g
 
 
---type KS a = WriterT String (State (G2, M.Map BDD Node)) a
-type KS a = State (G2, M.Map BDD Node) a
+-- | Merges 2 nodes in the graph.
+-- | The smallest one is mantained, the other one is removed.
+-- | All the sucessors are moved to the node that remains.
+-- | Return the node that remains.
+mergeNodes :: Node -> Node -> KS Node
+mergeNodes c1 c2 = do
+  (g, m1, m2) <- get
+  let [n1, n2] = sort [c1, c2] -- n1 is the smallest.
+      es = out g n2 -- getting the edges of n2
+      des = [(o, d) | (o, d, l) <- es] -- preparing to remove the edges from n2
+      es' = [(n1, d, l) | (o, d, l) <- es] --preparing to add the edgesg to n1
+
+  put (insEdges es' $ delEdges des g, m1, m2)
+  return $ trace ("Merged " ++ show (n1, n2)) $ n1
 
 checkResult :: KS (Either String Bool)
-checkResult = do
-  (g, m) <- get
-  let outs = [rank jn | (n, jn) <- labNodes g, outdeg g n == 0]
+checkResult =  do
+  (g, m1, m2) <- get
+  return $
+    error $
+      "uninplemented" ++ show [(n, l) | (n, l) <- labNodes g, outdeg g n == 0] ++
+        showGraph g
+    --where
+  {-do
   case (length $ nub $ outs) of
     1 -> return $ Right True
     _ -> return $ Right False
+    -}
 
+
+storeBDD :: BDD -> Node -> KS ()
 storeBDD bdd n = do
-  (g, m) <- get
-  put (g, M.insert bdd n m)
+  (g, m1, m2) <- get
+  put (g, M.insert bdd n m1, M.insert n bdd m2)
+
+deleteBDD :: Node -> KS ()
+deleteBDD n = do
+  (g, m1, m2) <- get
+  put (g, m1, M.delete n m2)
+
 
 kuelmannNode :: Node -> KS ()
 kuelmannNode n1 =
-  do (g, m) <- get
-     case calcBDDNode g n1 of
+  do (g, m1, m2) <- get
+     mbdd <- calcBDDNode n1
+     case mbdd of
        Nothing -> return () --tell $ "Could not create BDD for " ++ show n1
-       Just bdd -> case M.lookup bdd m of
+       Just bdd -> case M.lookup bdd m1 of
                      Nothing -> storeBDD bdd n1
-                     Just n2 -> do nr <- mergeNodesM n1 n2
+                     Just n2 -> do nr <- mergeNodes n1 n2
                                    storeBDD bdd nr
 
-calcBDDNode :: G2 -> Node -> Maybe BDD
-calcBDDNode g n
-  | indeg g n == 0 = Just $ case val jn of
-                              Wire x -> initialBDD x
-                              ValZero -> bddZero
-                              ValOne -> bddOne
-  | otherwise = r
-  where
-    Just jn = lab g n
-    is = map (getBDDfromEdge g) $ inn g n
-    r = foldr bddAnd bddOne <$> sequence is
+calcBDDNode :: Node -> KS (Maybe BDD)
+calcBDDNode n = do
+  g <- getG
+  if indeg g n == 0
+     then return $ Just $ case val g n of
+                            Wire _ -> initialBDD n
+                            ValZero -> bddZero
+                            ValOne -> bddOne
+
+     else do
+       is <- mapM getBDDfromEdge (inn g n)
+       return $ foldr bddAnd bddOne <$> sequence is
 
 -- | Checks Equivalence of circuits based on Kuelmann97
 equivKuelmann97_2 :: Checker
 equivKuelmann97_2 v1 v2 = r
-  where g = (makeGraphV v1) `union` (makeGraphV v2)
+  where g = makeGraphV [v1, v2]
         todo = mybfs g
-        r = flip evalState (g, M.empty) $ do
+        r = flip evalState (g, M.empty, M.empty) $ do
           mapM_ kuelmannNode todo
           checkResult
 
--}
-
-equivKuelmann97_2 :: Checker
-equivKuelmann97_2 = undefined

@@ -12,7 +12,7 @@ import qualified Data.IntMap as M
 import Control.Monad.State
 
 -- | A bdd has a source and a graph
-data BDD = Zero | One | B BDD String BDD
+data BDD = Zero | One | B BDD Node BDD
   deriving (Eq, Ord, Show)
 
 instance Monoid BDD where
@@ -24,7 +24,7 @@ bddZero = Zero
 bddOne = One
 
 -- | Creates an initial BDD with a 0 and 1 child for a variable v
-initialBDD :: String -> BDD
+initialBDD :: Node -> BDD
 initialBDD v = B Zero v One
 
 -- | Negates the BDD (inverts Zeros and Ones)
