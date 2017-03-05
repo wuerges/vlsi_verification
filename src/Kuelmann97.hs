@@ -18,6 +18,7 @@ import qualified Data.IntMap as I
 
 import qualified Data.Set as S
 
+{-
 data JoinNode = JN { rank :: Int
                    , val :: NT
                    , bdd :: Maybe BDD }
@@ -106,3 +107,8 @@ equivKuelmann97_2 v1 v2 = r
         r = flip evalState (g, M.empty) $ do
           mapM_ kuelmannNode todo
           checkResult
+
+-}
+
+equivKuelmann97_2 :: Checker
+equivKuelmann97_2 = undefined

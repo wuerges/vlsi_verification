@@ -17,8 +17,8 @@ import qualified Data.IntMap as M
 
 -- | The graph that models the circuit after Nand Synthesis Model
 
-type G = Gr () Bool
-type Ctx = Context () Bool
+type G = Gr Val Bool
+type Ctx = Context Val Bool
 
 
 type GState a = StateT G IdxState a
@@ -26,7 +26,7 @@ type GState a = StateT G IdxState a
 --type VG = Gr (NT, Bool) Bool
 
 -- | Converts a graph to a GraphViz format
-showGraph g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, v, os)) g
+showGraph g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, (n, v), os)) g
 
 -- | Creates all the nodes of the Graph
 --wireNodes :: Verilog -> Ctx
@@ -35,31 +35,31 @@ showGraph g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, v, os)) g
 -- | Embeds all the wires in the graphs as disconnected nodes
 
 startGraph :: G
-startGraph = mkGraph [(0, ()), (1, ())] []
+startGraph = mkGraph [(0, ValZero), (1, ValOne)] []
 
-addNode :: Node -> GState Int
-addNode n = do
+addNode :: (Val, Node) -> GState Int
+addNode (v, n) = do
   g <- get
   unless (gelem n g) $
-    modify $ insNode (n,())
+    modify $ insNode (n,v)
   return n
 
 
 newWire :: GState Int
 newWire = do
   n <- lift newIdx
-  addNode n
+  addNode (Wire "<extra>", n)
 
 getWire :: Val -> GState Int
 getWire w = do
   n <- lift $ getIdx w
-  addNode n
+  addNode (w, n)
 
 
 initGraph :: Verilog -> GState ()
 initGraph v = do
   ns <- lift $ getInputs $ _inputs v
-  mapM_ addNode ns
+  mapM_ addNode $ zip (map Wire $ _inputs v) ns
 
 trues  = repeat True
 falses = repeat False
@@ -67,17 +67,16 @@ falses = repeat False
 -- | Embeds a Function in the graph.
 embedF :: Function -> GState ()
 embedF f@(Fun op os is) =
-  trace ("Embedding function" ++ show f) $
+  --trace ("Embedding function" ++ show f) $
     case op of
       And  -> embedAnd is o
-      {-Nand -> embedNand is o
+      Nand -> embedNand is o
       Or   -> embedOr is o
       Nor  -> embedNor is o
       Xor  -> embedXor is o
       Xnor -> embedXnor is o
       Buf  -> embedBuf i os
       Not  -> embedNot i os
-      -}
     where [i] = is
           [o] = os
 
@@ -100,20 +99,23 @@ negateV n = do
 
 -- | Should insert a few edges in the graph.
 embedBuf :: Val -> [Val] -> GState ()
-embedBuf iw ows = --g {-
-  trace "Embedding buf" $ do
+embedBuf iw ows = do
     i <- getWire iw
     os <- mapM getWire ows
+    embedBuf' i os
+
+embedBuf' :: Node -> [Node] -> GState ()
+embedBuf' i os = do
     modify $ insEdges [(i,o, True) | o <- os]
-  -- -}
 
 -- | Inserts a Not function in the graph.
 -- | Does this by negating all the outputs of a current vertex.
-embedNot :: String -> [String] -> G -> G
-embedNot i os g =g {-
-  trace "Embedding not" $
-  embedBuf i os $ foldr negateV g os
-  -}
+embedNot :: Val -> [Val] -> GState ()
+embedNot iw ows = do
+  i <- getWire iw
+  os <- mapM getWire ows
+  mapM_ negateV os
+  embedBuf' i os
 
 -- | Inserts an And function into the graph
 embedAnd :: [Val] -> Val -> GState ()
@@ -205,9 +207,19 @@ fixSingleNodes g = trace ("fix singles ")
     g'
   where g' = foldr fixSingleNode g (nodes g)
 
-makeGraphV :: Verilog -> GState G
-makeGraphV v = do
+
+makeGraphV :: [Verilog] -> G
+makeGraphV vs =
+  runIdx $ flip evalStateT startGraph $ do
+    mapM_ initGraph vs
+    mapM_ makeGraphV1 vs
+    get
+
+
+makeGraphV1 :: Verilog -> GState G
+makeGraphV1 v = do
   mapM embedF $ reverse $ _functions v
+  lift resetIdx
   get
 --fixSingleNodes $
   --trace "Finished Embeddeding all functinos"  $
