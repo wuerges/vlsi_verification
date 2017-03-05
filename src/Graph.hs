@@ -1,6 +1,8 @@
 module Graph where
 
 import Control.Monad
+import Control.Monad.State
+import Index
 import Verilog
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Query.DFS
@@ -15,44 +17,67 @@ import qualified Data.IntMap as M
 
 -- | The graph that models the circuit after Nand Synthesis Model
 
-data NT = Wire String | ValZero | ValOne
-  deriving (Eq, Ord, Show)
+type G = Gr () Bool
+type Ctx = Context () Bool
 
-type G = Gr NT Bool
-type Ctx = Context NT Bool
+
+type GState a = StateT G IdxState a
 
 --type VG = Gr (NT, Bool) Bool
 
 -- | Converts a graph to a GraphViz format
-showGraph g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, show n, os)) g
+showGraph g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, v, os)) g
 
 -- | Creates all the nodes of the Graph
 --wireNodes :: Verilog -> Ctx
 --wireNodes v = [([], n, (), []) | n <- names v]
 
 -- | Embeds all the wires in the graphs as disconnected nodes
-initGraph :: Verilog -> G -> G
-initGraph v g = g'
-  where m = fromGraph g
-        g' = insMapNodes_ m (ValZero:ValOne:named) g
-        named = map Wire $ names v
+
+startGraph :: G
+startGraph = mkGraph [(0, ()), (1, ())] []
+
+addNode :: Node -> GState Int
+addNode n = do
+  g <- get
+  unless (gelem n g) $
+    modify $ insNode (n,())
+  return n
+
+
+newWire :: GState Int
+newWire = do
+  n <- lift newIdx
+  addNode n
+
+getWire :: Val -> GState Int
+getWire w = do
+  n <- lift $ getIdx w
+  addNode n
+
+
+initGraph :: Verilog -> GState ()
+initGraph v = do
+  ns <- lift $ getInputs $ _inputs v
+  mapM_ addNode ns
 
 trues  = repeat True
 falses = repeat False
 
 -- | Embeds a Function in the graph.
-embedF :: Function -> G -> G
-embedF (Fun op os is) g =
+embedF :: Function -> GState ()
+embedF f@(Fun op os is) =
+  trace ("Embedding function" ++ show f) $
     case op of
-    --case trace ("// embedF -> " ++ show (op, os, is) ++ "\n" ++  showGraph g)  op of
-       And  -> embedAnd is o g
-       Nand -> embedNand is o g
-       Or   -> embedOr is o g
-       Nor  -> embedNor is o g
-       Xor  -> embedXor is o g
-       Xnor -> embedXnor is o g
-       Buf  -> embedBuf i os g
-       Not  -> embedNot i os g
+      And  -> embedAnd is o
+      {-Nand -> embedNand is o
+      Or   -> embedOr is o
+      Nor  -> embedNor is o
+      Xor  -> embedXor is o
+      Xnor -> embedXnor is o
+      Buf  -> embedBuf i os
+      Not  -> embedNot i os
+      -}
     where [i] = is
           [o] = os
 
@@ -65,82 +90,106 @@ negateCtx (is, n, nv, os) = (is, n, nv, negateA os)
 
 
 -- | Negates all output edges of a node
-negateV :: String -> G -> G
-negateV name g =
-  let m = fromGraph g
-      (n, _) = mkNode_ m $ Wire name
-      (mc, g') = match n g
-   in case mc of
-        Just ctx -> negateCtx ctx & g'
-        Nothing -> error "could not find vertex in negateV"
+negateV :: Node -> GState ()
+negateV n = do
+  g <-  get
+  let (mc, g') = match n g
+  case mc of
+    Just ctx -> put $ negateCtx ctx & g'
+    Nothing -> error "could not find vertex in negateV"
 
 -- | Should insert a few edges in the graph.
-embedBuf :: String -> [String] -> G -> G
-embedBuf i os g =
-  run_ g $ insMapEdgesM [(Wire i, Wire o, True) | o <- os]
+embedBuf :: Val -> [Val] -> GState ()
+embedBuf iw ows = --g {-
+  trace "Embedding buf" $ do
+    i <- getWire iw
+    os <- mapM getWire ows
+    modify $ insEdges [(i,o, True) | o <- os]
+  -- -}
 
 -- | Inserts a Not function in the graph.
 -- | Does this by negating all the outputs of a current vertex.
 embedNot :: String -> [String] -> G -> G
-embedNot i os g =
+embedNot i os g =g {-
+  trace "Embedding not" $
   embedBuf i os $ foldr negateV g os
+  -}
 
 -- | Inserts an And function into the graph
-embedAnd :: [String] -> String -> G -> G
-embedAnd is o g =
-  run_ g $ insMapEdgesM [(Wire i, Wire o, True) | i <- is]
+embedAnd :: [Val] -> Val -> GState ()
+embedAnd iws ow = do
+    is <- mapM getWire iws
+    o <- getWire ow
+    embedAnd' is o
+
+embedAnd' :: [Node] -> Node -> GState ()
+embedAnd' is o =
+  modify $ insEdges [(i,o, True) | i <- is]
 
 -- | Inserts a Nand function into the graph
-embedNand :: [String] -> String -> G -> G
-embedNand is o g =
-  embedAnd is o $ negateV o g
+embedNand :: [Val] -> Val -> GState ()
+embedNand iws ow = do
+  is <- mapM getWire iws
+  o <- getWire ow
+  embedNand' is o
+
+embedNand' :: [Node] -> Node -> GState ()
+embedNand' is o = do
+  negateV o
+  embedAnd' is o
 
 -- | Inserts an Or function into the graph
-embedOr :: [String] -> String -> G -> G
-embedOr is o g =
-  embedNor is o $ negateV o g
+embedOr :: [Val] -> Val -> GState ()
+embedOr iws ow = do
+  is <- mapM getWire iws
+  o <- getWire ow
+  embedOr' is o
+
+embedOr' :: [Node] -> Node -> GState ()
+embedOr' is o = do
+  negateV o
+  embedNor' is o
 
 -- | Inserts a Nor function into the graph
-embedNor :: [String] -> String -> G -> G
-embedNor is o g =
-  run_ g $ insMapEdgesM [(Wire i, Wire o, False) | i <- is]
+embedNor :: [Val] -> Val -> GState ()
+embedNor iws ow = do
+  is <- mapM getWire iws
+  o <- getWire ow
+  embedNor' is o
+
+
+embedNor' :: [Node] -> Node -> GState ()
+embedNor' is o =
+  modify $ insEdges [(i, o, False) | i <- is]
 
 
 
 -- | Inserts a Xor function into the graph
-embedXor :: [String] -> String -> G -> G
-embedXor [i1, i2] o g =
-  embedOr [i1, i2] n2 $
-    embedNand [i1, i2] n1 $
-      embedAnd [n1, n2] o $
-        run_ g $ do
-          insMapNodeM $ Wire n1
-          insMapNodeM $ Wire n2
-  where
-    n1 = i1 ++ "_extra_wire"
-    n2 = i2 ++ "_extra_wire"
-      {-
+embedXor :: [Val] -> Val -> GState ()
+embedXor iws ow = do
+  is <- mapM getWire iws
+  o <- getWire ow
+  embedXor' is o
 
-    where [n1, n2] = newNodes 2 g
-          g'  = insNodes [(n1, ()), (n2, ())] g
-          g'' = embedOr [i1, i2] n2
-              $ embedNand [i1, i2] n1
-              $ embedAnd [n1, n2] o g'
-              -}
-embedXor (i1:i2:is) o g =
-  embedXor [i1,i2] n $
-    embedXor (n:is) o $
-      run_ g $ insMapNodeM $ Wire n
-        where n = i1 ++ "_extra_wire"
+embedXor' :: [Node] -> Node -> GState ()
+embedXor' [i1, i2] o = do
+  n1 <- newWire
+  n2 <- newWire
+  embedAnd' [n1, n2] o
+  embedNand' [i1, i2] n1
+  embedOr' [i1, i2] n2
 
-{-
-  g'
-    where [n]  = newNodes 1 g
-          g'   = embedXor (n:is) o $ embedXor [i1, i2] n $ insNode (n, ()) g
-          -}
+embedXor' (i1:i2:is) o = do
+  n <- newWire
+  embedXor' (n:is) o
+  embedXor' [i1, i2] n
 
 -- | Inserts a Xnor gate into the graph
-embedXnor is o g = embedXor is o (negateV o g)
+embedXnor iws ow = do
+  is <- mapM getWire iws
+  o <- getWire ow
+  negateV o
+  embedXor' is o
 
 
 -- | Replaces a node with only one input and one output with an edge.
@@ -152,12 +201,16 @@ fixSingleNode n g =  case match n g of
     (Nothing, _)  -> error "Could not match context in fixSingleNode"
 
 -- | Cleans up graph after adding extra single nodes
-fixSingleNodes g = --trace ("// fix singles \n" ++ showGraph g ++ "\n//fixed:\n" ++ showGraph g') g'
+fixSingleNodes g = trace ("fix singles ")
     g'
   where g' = foldr fixSingleNode g (nodes g)
 
-makeGraphV :: Verilog -> G
-makeGraphV v = fixSingleNodes $ foldr embedF (initGraph v empty) (reverse $ _functions v)
+makeGraphV :: Verilog -> GState G
+makeGraphV v = do
+  mapM embedF $ reverse $ _functions v
+  get
+--fixSingleNodes $
+  --trace "Finished Embeddeding all functinos"  $
 
 -- | Calculates the nodes without input edges
 inputs :: Gr a b -> [Int]

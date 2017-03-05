@@ -18,15 +18,15 @@ import qualified Data.IntMap as I
 
 import qualified Data.Set as S
 
-type G2 = Gr (NT, Int, Maybe BDD) Bool
+data JoinNode = JN { rank :: Int
+                   , val :: NT
+                   , bdd :: Maybe BDD }
 
-sel1 (x, _, _) = x
-sel2 (_, x, _) = x
-sel3 (_, _, x) = x
+type G2 = Gr JoinNode Bool
 
 
 getBDD :: G2 -> Node -> Maybe BDD
-getBDD g n = join $ sel3 <$> lab g n
+getBDD g n = join $ bdd <$> lab g n
 
 
 getBDDfromEdge g (o, _, v)
@@ -38,8 +38,8 @@ getBDDfromEdge g (o, _, v)
 union :: G -> G -> G2
 union g1 g2 = g'
     where
-      g1' = nmap (\nt -> (nt, 0, Nothing)) g1
-      g2' = nmap (\nt -> (nt, 1, Nothing)) g2
+      g1' = nmap (\nt -> JN 0 nt Nothing) g1
+      g2' = nmap (\nt -> JN 1 nt Nothing) g2
       new_nodes = labNodes g1' ++ labNodes g2'
       new_edges = labEdges g1' ++ labEdges g2'
       g' = mkGraph new_nodes new_edges
@@ -67,7 +67,7 @@ type KS a = State (G2, M.Map BDD Node) a
 checkResult :: KS (Either String Bool)
 checkResult = do
   (g, m) <- get
-  let outs = [or | (n, (nt, or, _)) <- labNodes g, outdeg g n == 0]
+  let outs = [rank jn | (n, jn) <- labNodes g, outdeg g n == 0]
   case (length $ nub $ outs) of
     1 -> return $ Right True
     _ -> return $ Right False
@@ -88,13 +88,13 @@ kuelmannNode n1 =
 
 calcBDDNode :: G2 -> Node -> Maybe BDD
 calcBDDNode g n
-  | indeg g n == 0 = Just $ case nt of
+  | indeg g n == 0 = Just $ case val jn of
                               Wire x -> initialBDD x
                               ValZero -> bddZero
                               ValOne -> bddOne
   | otherwise = r
   where
-    Just (nt, n', _) = lab g n
+    Just jn = lab g n
     is = map (getBDDfromEdge g) $ inn g n
     r = foldr bddAnd bddOne <$> sequence is
 

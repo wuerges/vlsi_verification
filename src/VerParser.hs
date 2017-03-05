@@ -19,11 +19,17 @@ reserved    = P.reserved lexer
 commaSep    = P.commaSep lexer
 semi        = P.semi lexer
 
+
+wire :: GenParser Char st Val
+wire = do
+  name <- identifier
+  return $ Wire name
+
 -- Semantics
 data CompExpr = WireExpr [String]
-                | InputExpr [String]
-                | OutputExpr [String]
-                | FunctionExpr Function
+              | InputExpr [String]
+              | OutputExpr [String]
+              | FunctionExpr Function
 
 makeVerilog :: [CompExpr] -> Verilog
 makeVerilog = foldl addVerilog emptyVerilog
@@ -34,19 +40,23 @@ addVerilog v (InputExpr ws)     = v { _inputs    = _inputs v ++ ws }
 addVerilog v (OutputExpr ws)    = v { _outputs   = _outputs v ++ ws }
 addVerilog v (FunctionExpr f)   = v { _functions = f:_functions v }
 
-literal :: GenParser Char st String
-literal = string "1'b0" >> whiteSpace >> return "1'b0"
+literalZero :: GenParser Char st Val
+literalZero = string "1'b0" >> whiteSpace >> return ValZero
+
+literalOne :: GenParser Char st Val
+literalOne = string "1'b1" >> whiteSpace >> return ValOne
 
 
-parseWire :: GenParser Char st String
-parseWire = identifier <|> literal
+
+parseWire :: GenParser Char st Val
+parseWire = wire <|> literalOne <|> literalZero
 
 -- Syntax
 moduleExpr :: GenParser Char st (String, [String])
 moduleExpr = do whiteSpace
                 reserved "module"
                 name <- identifier
-                ports <- parens (commaSep parseWire)
+                ports <- parens (commaSep identifier)
                 _ <- semi
                 return (name, ports)
 
@@ -68,19 +78,19 @@ functionExpr = do op <- parseOp
 
 outputExpr :: GenParser Char st CompExpr
 outputExpr = do reserved "output"
-                is <- commaSep parseWire
+                is <- commaSep identifier
                 _ <- semi
                 return $ OutputExpr is
 
 inputExpr :: GenParser Char st CompExpr
 inputExpr = do reserved "input"
-               is <- commaSep parseWire
+               is <- commaSep identifier
                _ <- semi
                return $ InputExpr is
 
 wireExpr :: GenParser Char st CompExpr
 wireExpr = do reserved "wire"
-              is <- commaSep parseWire
+              is <- commaSep identifier
               _ <- semi
               return $ WireExpr is
 

@@ -6,13 +6,17 @@ import qualified Data.Map as M
 import Data.Maybe
 import Control.Monad.State
 
+
+data Val = Wire String | ValZero | ValOne
+  deriving (Eq, Ord, Show)
+
 data Function = Fun { _op  :: Op
-                    , _out :: [String]
-                    , _in  :: [String] }
+                    , _out :: [Val]
+                    , _in  :: [Val] }
     deriving (Ord, Eq, Show)
 
-namesFun :: Function -> [String]
-namesFun (Fun _ o i) = o ++ i
+--namesFun :: Function -> [Val]
+--namesFun (Fun _ o i) = o ++ i
 
 data Op = And
         | Or
@@ -24,7 +28,7 @@ data Op = And
         | Nand
     deriving (Ord, Eq, Show)
 
-makeFunction :: Op -> [String] -> Function
+makeFunction :: Op -> [Val] -> Function
 makeFunction Buf ps = Fun Buf (init ps) [last ps]
 makeFunction Not ps = Fun Not (init ps) [last ps]
 makeFunction op (p:ps) = Fun op [p] ps
@@ -36,8 +40,8 @@ data Verilog = Verilog { _inputs :: [String]
                        }
     deriving Show
 
-names :: Verilog -> [String]
-names v = _inputs v ++ _outputs v ++ concatMap namesFun (_functions v)
+--names :: Verilog -> [String]
+--names v = _inputs v ++ _outputs v ++ concatMap namesFun (_functions v)
 
 emptyVerilog = Verilog { _inputs = []
                        , _outputs = []

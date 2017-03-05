@@ -14,9 +14,9 @@ main = do --f <- getContents
           ps <- mapM parseVerilog fs
           case rights ps of
             [r1, r2]  -> do --print "ok"
-                            --putStrLn $ showGraph g1
+                            putStrLn $ showGraph g1
                             --putStrLn $ showGraph g2
-                            putStrLn $ showGraph $ gu
+                            --putStrLn $ showGraph $ gu
                             --hPutStrLn stderr $ "// 10 " ++ show (createBDD gu 10)
                             --hPutStrLn stderr $ "// 3  " ++ show (createBDD gu 3)
                             --hPutStrLn stderr $ show (calculateAllBDDs gu)

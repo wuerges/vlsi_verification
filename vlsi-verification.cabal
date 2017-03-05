@@ -24,6 +24,7 @@ library
                      , Algo       
                      , BDD        
                      , BDDGraph
+                     , Index
 
   build-depends:       base
                      , parallel
