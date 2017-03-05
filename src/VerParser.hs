@@ -41,10 +41,10 @@ addVerilog v (OutputExpr ws)    = v { _outputs   = _outputs v ++ ws }
 addVerilog v (FunctionExpr f)   = v { _functions = f:_functions v }
 
 literalZero :: GenParser Char st Val
-literalZero = string "1'b0" >> whiteSpace >> return ValZero
+literalZero = reserved "1'b0" >> whiteSpace >> return ValZero
 
 literalOne :: GenParser Char st Val
-literalOne = string "1'b1" >> whiteSpace >> return ValOne
+literalOne = reserved "1'b1" >> whiteSpace >> return ValOne
 
 
 
