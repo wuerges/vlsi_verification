@@ -1,6 +1,7 @@
 --module BDDGraph (BDD, initialBDD, negateBDD ) where
 module BDDGraph where
 
+import Graph
 import Debug.Trace
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Query.DFS (reachable)
@@ -10,208 +11,127 @@ import Data.Ord
 import Data.List (intersperse, sortOn, groupBy)
 import qualified Data.Set as S
 
-instance Monoid BDD where
-  mempty = bddOne
-  mappend = bddAnd
-
-data NV = I Node | Zero | One
-  deriving (Eq, Show)
-
-type G = Gr NV Bool
-type Ctx = Context NV Bool
-data BDD = BDD { getG :: G , getN :: Node }
+newtype BDD = B Int
   deriving Show
 
-instance Ord NV where
-  Zero `compare` Zero = EQ
-  Zero `compare` _    = LT
-  _    `compare` Zero = GT
-  One  `compare` One  = EQ
-  One  `compare` _    = LT
-  _    `compare` One  = GT
-  I x  `compare` I y  = x `compare` y
+data V =  V { input :: Node
+            , repr :: Nod }
+  deriving (Eq, Ord, Show)
 
-type GST a = State G a
+type T = Gr V Bool
+type Ctx = Context V Bool
 
+type BDDStateT a = State T a
 
-instance Ord BDD where
-  b1@(BDD g1 n1) `compare` b2@(BDD g2 n2) =
-    case val g1 n1 `compare` val g2 n2 of
-      LT -> LT
-      GT -> GT
-      EQ ->
-        if (val g1 n1 == Zero) ||  (val g1 n1 == One)
-           then EQ
-           else case leftOf b1 `compare` leftOf b2 of
-                  LT -> LT
-                  GT -> GT
-                  EQ -> rightOf b1 `compare` rightOf b2
+startingG = mkGraph [(0,V (-1)), (1, V (-1))] [] :: T
 
-instance Eq BDD where
-  b1 == b2 = (b1 `compare` b2) == EQ
+runBDDStateT is op = flip runStateT startingG op
 
-
-leftOf :: BDD -> BDD
-leftOf (BDD g n) =
-  runGST g (do (l, _) <- bddSucM n
-               return (BDD g l))
-
-rightOf :: BDD -> BDD
-rightOf (BDD g n) =
-  runGST g (do (_, r) <- bddSucM n
-               return (BDD g r))
-
-runGST :: G -> GST a -> a
-runGST g c = evalState c g
-
-adjustRange :: (Node, Node) -> Node -> Node
-adjustRange (_, r) n
-  | n == 0 = n -- trace "\n----ZERO----\n" n
-  | n == 1 = n --trace "\n----ONE----\n" n
-  | otherwise =  n + r --trace "\n----OTHER----\n" $  n + r
-
-adjustEdgeRange :: (Node, Node) -> (Node, Node, Bool) -> (Node, Node, Bool)
-adjustEdgeRange r (o, d, b) = (adjustRange r o, adjustRange r d, b)
-
-adjustNodeRange :: (Node, Node) -> (Node, NV) -> (Node, NV)
-adjustNodeRange r (n, v) = (adjustRange r n, v)
-
-contexts :: G -> [Ctx]
-contexts g = map (context g) (nodes g)
-
-
-uniq :: Ord a => [a] -> [a]
-uniq = S.toList . S.fromList
-
-merge :: G -> G -> Node -> (G, Node)
-merge g1 g2 n = --traceShow (g1, g2, g', n, n') $
-  (g', n')
-  where
-    ns = map (adjustNodeRange r) $ labNodes g2
-    es = map (adjustEdgeRange r) $ labEdges g2
-    g' = insEdges es $ insNodes ns $ g1
-    n' = adjustRange r n
-    r  = nodeRange g1
-
-bundle :: Node -> G -> GST Node
-bundle n g2 = do
-  g1 <- get
-  let (g', n') = merge g1 g2 n
-  put g'
-  return n'
-
-bddOne  = BDD (mkGraph [(1, One)] []) 1
-bddZero = BDD (mkGraph [(0, Zero)] []) 0
-
-initialBDD :: Int -> BDD
-initialBDD v = BDD g nv
-    where nv = v + 2
-          g = mkGraph [(0, Zero), (1, One), (nv, I v)]
-                      [(nv, 0, False), (nv, 1, True)]
-
-
-negateBDD :: BDD -> BDD
-negateBDD (BDD g v) = BDD (nmap negateNV g) v
-  where
-    negateNV Zero = One
-    negateNV One = Zero
-    negateNV (I x) = (I x)
-
-larger :: Node -> Node -> GST Ordering
-larger n1 n2 = do
+initialBDD :: Node -> BDDStateT BDD
+initialBDD n = do
   g <- get
-  return $ fromMaybe (error $ "tried to compare inexistent nodes: " ++ show (g, n1, n2)) $
-    compare <$> lab g n1 <*> lab g n2
+  unless (gelem n g) $ do
+    modify $ insNode (n, V n)
+    modify $ insEdges [(n, 0, False), (n, 1, True)]
+  return $ B n
 
+-- | Exported function
+bddOne = B 1
+-- | Exported function
+bddZero = B 0
 
-newNode :: GST Node
-newNode = head . newNodes 1 <$> get
+bval :: Node -> BDDStateT V
+bval o = do
+  Just v <- flip lab o <$> get
+  return v
 
-bddSucM :: Node -> GST (Node, Node)
-bddSucM n = do
-  g <- get
-  ss <- flip lsuc n <$> get
-  let [(l, lv), (r, rv)] = uniq ss
-        --trace ("ss -> " ++ show ss ++ "-> "++ prettify g) (uniq ss)
-  case (lv, rv) of
-    (False, True) -> return (l, r)
-    (True, False) -> return (r, l)
-    _ -> error $ "BDD sucs not ok: " ++ show ss
+dupNode :: V -> BDDStateT Node
+dupNode v = do
+  [n] <- newNodes 1 <$> get
+  modify $ insNode (n, v)
+  return n
 
+getSons :: Node -> BDDStateT (Node, Node)
+getSons n = do
+  es <- flip out n <$> get
+  case es of
+    [(_, l, False), (_, r, True)] -> return (l, r)
+    [(_, r, False), (_, l, False)] -> return (l, r)
 
+getL :: Node ->  BDDStateT Node
+getL n = fst <$> getSons n
+getR :: Node ->  BDDStateT Node
+getR n = snd <$> getSons n
 
-val :: G -> Node -> NV
-val g n = fromMaybe (error "Could not find node in BDD") $
-  lab g n
+newParent :: V -> (Node, Node) -> BDDStateT BDD
+newParent n (l, r) = do
+  n' <- dupNode n
+  modify $ insEdges [(n', l, False), (n', r, True)]
+  return $ B n'
 
+-- | Exported function
+negateBDD :: BDD -> BDDStateT BDD
+negateBDD (B 0) = return $ B 1
+negateBDD (B 1) = return $ B 0
+negateBDD (B n) = do
+  v <- bval n
+  (l, r) <- getSons n
+  B l' <- negateBDD $ B l
+  B r' <- negateBDD $ B r
+  newParent v (l', r')
 
-addParent :: (Node, Node) -> Node -> GST Node
-addParent (l, r) p = do
-  t <- newNode
-  g <- get
-  put $ ([], t, val g p, [(False, l), (True, r)]) & g
-  return t
+bddAnd :: BDD -> BDD -> BDDStateT BDD
+bddAnd (B 0) _ = return $ B 0
+bddAnd _ (B 0) = return $ B 0
+bddAnd (B 1) b = return b
+bddAnd b (B 1) = return b
 
+bddAnd (B n1) (B n2) = do
+  v_n1 <- bval n1
+  v_n2 <- bval n2
+  (z1, o1) <- getSons n1
+  (z2, o2) <- getSons n2
 
-bddAndM :: Node -> Node -> GST Node
-bddAndM 0 _ = return 0
-bddAndM 1 n = return n
-bddAndM n 0 = return 0
-bddAndM n 1 = return n
-bddAndM n1 n2 = do --trace ("bddAndM " ++ show (n1, n2) ++ "\n") $ do
-  ord <- larger n1 n2
-  case ord of
-    EQ -> do
-      (l1, r1) <- bddSucM n1
-      (l2, r2) <- bddSucM n2
-      l <-bddAndM l1 l2
-      r <-bddAndM r1 r2
-      addParent (l, r) n1
-    LT -> do
-      (l1, r1) <- bddSucM n1
-      l <-bddAndM l1 n2
-      r <-bddAndM r1 n2
-      addParent (l, r) n2
+  case v_n1 `compare` v_n2 of
     GT -> do
-      (l2, r2) <- bddSucM n2
-      l <-bddAndM n1 l2
-      r <-bddAndM n1 r2
-      addParent (l, r) n1
+      B z <- bddAnd (B z1) (B n2)
+      B o <- bddAnd (B o1) (B n2)
+      newParent v_n1 (z, o)
+    LT -> do
+      B z <- bddAnd (B z2) (B n1)
+      B o <- bddAnd (B o2) (B n1)
+      newParent v_n2 (z, o)
+    EQ -> do
+      B z <- bddAnd (B z1) (B z2)
+      B o <- bddAnd (B o1) (B o2)
+      newParent v_n1 (z, o)
 
-bddAnd :: BDD -> BDD -> BDD
-bddAnd (BDD g1 n1) (BDD g2 n2) = --trace (":> bbdAnd " ++ show (n1, n2) ++"\n") $
-  BDD g' t'
-  where (g', t') = runGST g1 (do r <- bundle n2 g2
-                                 --t <- trace ("\n--->" ++ show (n1, n2, r)) (bddAndM n1 r)
-                                 t <- bddAndM n1 r
-                                 g <- get
-                                 return (g, t))
+setSons n z o =
+  modify $ insEdges [(n, z, False), (n, o, True)]
 
+reduce1 :: BDD -> BDDStateT ()
+reduce1 (B 0) = return ()
+reduce1 (B 1) = return ()
+reduce1 (B n) = do
+  (z, o) <- getSons n
+  when (z == o) $ do
+    modify $ delEdges [(n,z), (n,o)]
+    (z', o') <- getSons z
+    setSons n z' o'
 
-getLayers :: G -> [[Node]]
-getLayers g = map (map fst) gs
-  where
-    _:_:ns = sortOn snd $ labNodes g
-    gs = groupBy (\a b -> snd a == snd b) ns
+reduce2 :: BDD -> BDD -> BDDStateT ()
+reduce2 (B 0) _ =  return ()
+reduce2 _ (B 0) = return ()
+reduce2 (B 1) _ = return ()
+reduce2 _ (B 1) = return ()
 
-reduceLayerOneM :: Node -> GST ()
-reduceLayerOneM = undefined
+reduce2 (B n1) (B n2) = do
+  (z1, o1) <- getSons n1
+  (z2, o2) <- getSons n2
+  when (z1 == z2 && o1 == o2) $ do
+    moveParents n1 n2
 
-reduceLayerM :: [Node] -> GST ()
-reduceLayerM []  = error "empty layer"
-reduceLayerM [x] = return ()
-reduceLayerM (a:b:xs) = undefined
-
-bddReduceM :: Node -> GST ()
-bddReduceM t = do
-  modify $ \g -> subgraph (reachable t g) g
-  layers <- getLayers <$> get
-  mapM_ reduceLayerM layers
-
-
-bddReduce :: BDD -> BDD
-bddReduce = undefined
-
-
-bddSize :: BDD -> Int
-bddSize (BDD g _) = noNodes g
+moveParents :: Node -> Node -> BDDStateT ()
+moveParents n1 n2 = do
+  ps_n1 <- flip inn n1 <$> get
+  modify $ insEdges [(o, n2, v) | (o,_,v) <- ps_n1]

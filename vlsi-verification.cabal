@@ -23,7 +23,7 @@ library
                      , Graph      
                      , Algo       
                      , BDD        
-                     --, BDDGraph
+                     , BDDGraph
                      , Index
 
   build-depends:       base
