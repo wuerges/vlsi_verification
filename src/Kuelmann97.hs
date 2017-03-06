@@ -77,10 +77,16 @@ mergeNodes c1 c2 = do
   return $ n1
 
 
+isWire n g = case l of
+               Wire _ -> True
+               _ -> False
+  where Just l = lab g n
+
+
 purgeNode :: Node -> KS ()
 purgeNode n = do
   g <- getG
-  when (gelem n g && outdeg g n == 0) $ do
+  when (gelem n g && isWire n g && outdeg g n == 0) $ do
     putG (delNode n g)
     mapM_ purgeNode [o | (o, _, _) <- inn g n]
 
@@ -119,8 +125,17 @@ kuelmannNode n1 =
        Nothing -> return () --tell $ "Could not create BDD for " ++ show n1
        Just bdd -> case M.lookup bdd m1 of
                      Nothing -> storeBDD bdd n1
-                     Just n2 -> do nr <- mergeNodes n1 n2
-                                   storeBDD bdd nr
+                     Just n2 -> do
+                       lift $ tell $ [(g, "BDDs match: "++ show (n1, n2) ++ " -> "++ show bdd)]
+                       nr <- mergeNodes n1 n2
+                       storeBDD bdd nr
+
+calcBDDNode' n = do
+  mbdd <- calcBDDNode n
+  case mbdd of
+    Nothing -> return ()
+    Just bdd -> storeBDD bdd n
+  return mbdd
 
 calcBDDNode :: Node -> KS (Maybe BDD)
 calcBDDNode n = do
@@ -137,12 +152,15 @@ calcBDDNode n = do
        is <- mapM getBDDfromEdge (inn g n)
        return $ foldr bddAnd bddOne <$> sequence is
 
+
+runKS :: G -> KS a -> (a, [Log])
+runKS g m = runWriter $ flip evalStateT (g, M.empty, M.empty) m
+
 -- | Checks Equivalence of circuits based on Kuelmann97
 equivKuelmann97_2 :: Verilog -> Verilog -> (Either String Bool, [Log])
-equivKuelmann97_2 v1 v2 = r
+equivKuelmann97_2 v1 v2 =
+  runKS g $ do mapM_ kuelmannNode todo
+               checkResult
   where g = makeGraphV [v1, v2]
         todo = mybfs g
-        r = runWriter $ flip evalStateT (g, M.empty, M.empty) $ do
-              mapM_ kuelmannNode todo
-              checkResult
 

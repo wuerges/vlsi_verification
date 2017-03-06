@@ -1,4 +1,5 @@
-module BDD (BDD, initialBDD, bddAnd, negateBDD, bddOne, bddZero) where
+--module BDD (BDD, initialBDD, bddAnd, negateBDD, bddOne, bddZero) where
+module BDD where
 
 import Verilog
 import Graph

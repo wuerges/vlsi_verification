@@ -97,6 +97,7 @@ negateCtx (is, n, nv, os) = (is, n, nv, negateA os)
 
 
 -- | Negates all output edges of a node
+{-
 negateV :: Node -> GState ()
 negateV n = do
   g <-  get
@@ -104,7 +105,7 @@ negateV n = do
   case mc of
     Just ctx -> put $ negateCtx ctx & g'
     Nothing -> error "could not find vertex in negateV"
-
+-}
 -- | Should insert a few edges in the graph.
 embedBuf :: Val -> [Val] -> GState ()
 embedBuf iw ows = do
@@ -122,8 +123,7 @@ embedNot :: Val -> [Val] -> GState ()
 embedNot iw ows = do
   i <- getWire iw
   os <- mapM getWire ows
-  mapM_ negateV os
-  embedBuf' i os
+  modify $ insEdges [(i,o, False) | o <- os]
 
 -- | Inserts an And function into the graph
 embedAnd :: [Val] -> Val -> GState ()
@@ -145,8 +145,9 @@ embedNand iws ow = do
 
 embedNand' :: [Node] -> Node -> GState ()
 embedNand' is o = do
-  negateV o
-  embedAnd' is o
+  n <- newWire
+  modify $ insEdge (n, o, False)
+  embedAnd' is n
 
 -- | Inserts an Or function into the graph
 embedOr :: [Val] -> Val -> GState ()
@@ -157,8 +158,9 @@ embedOr iws ow = do
 
 embedOr' :: [Node] -> Node -> GState ()
 embedOr' is o = do
-  negateV o
-  embedNor' is o
+  n <- newWire
+  modify $ insEdge (n, o, False)
+  embedNor' is n
 
 -- | Inserts a Nor function into the graph
 embedNor :: [Val] -> Val -> GState ()
@@ -198,8 +200,9 @@ embedXor' (i1:i2:is) o = do
 embedXnor iws ow = do
   is <- mapM getWire iws
   o <- getWire ow
-  negateV o
-  embedXor' is o
+  n <- newWire
+  modify $ insEdge (n, o, False)
+  embedXor' is n
 
 
 -- | Replaces a node with only one input and one output with an edge.
@@ -230,11 +233,12 @@ makeGraphV1 v = do
   wires <- mapM getWire (map Wire $ _inputs v)
   mapM_ (addEdge True) $ zip inputs wires
 
+  mapM embedF $ reverse $ _functions v
+
   wire_outs <- mapM getWire (map Wire $ _outputs v)
   outs <- mapM getWire (map Output $ _outputs v)
   mapM_ (addEdge True) $ zip wire_outs outs
 
-  mapM embedF $ reverse $ _functions v
   lift resetIdx
   get
 --fixSingleNodes $
