@@ -15,7 +15,7 @@ newtype BDD = B Int
   deriving Show
 
 data V =  V { input :: Node
-            , repr :: Nod }
+            , repr :: Node }
   deriving (Eq, Ord, Show)
 
 type T = Gr V Bool
