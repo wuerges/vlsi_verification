@@ -13,14 +13,16 @@ import Data.Maybe
 
 import Data.List hiding (union)
 import Data.Graph.Inductive
-import Debug.Trace
+--import Debug.Trace
 import qualified Data.Map as M
 import qualified Data.IntMap as I
 
 import qualified Data.Set as S
 
 --type KS a = WriterT String (State (G, M.Map BDD Node)) a
-type KS a = State (G, M.Map BDD Node, M.Map Node BDD) a
+--
+type Log = (G, String)
+type KS a = StateT  (G, M.Map BDD Node, M.Map Node BDD) (Writer [Log]) a
 
 getNodeBddM :: KS (M.Map Node BDD)
 getNodeBddM = do
@@ -42,6 +44,11 @@ getBDDfromEdge (o, _, v) = do
   if v then return bdd
        else return $ negateBDD <$> bdd
 
+putG :: G -> KS ()
+putG g = do
+  (_, x, y) <- get
+  put (g, x, y)
+
 getG :: KS G
 getG = do
   (g, _, _) <- get
@@ -59,17 +66,32 @@ mergeNodes c1 c2 = do
       es = out g n2 -- getting the edges of n2
       des = [(o, d) | (o, d, l) <- es] -- preparing to remove the edges from n2
       es' = [(n1, d, l) | (o, d, l) <- es] --preparing to add the edgesg to n1
+      g' = insEdges es' $ delEdges des g
 
-  put (insEdges es' $ delEdges des g, m1, m2)
-  return $ trace ("Merged " ++ show (n1, n2)) $ n1
+  put (g', m1, m2)
+  purgeNode n2
+  g'' <- getG
+  lift $ tell [(g, "before merge of " ++ show (n1,n2))]
+  lift $ tell [(g', "after the merge of " ++ show (n1,n2))]
+  lift $ tell [(g'', "after the purge of " ++ show n2)]
+  return $ n1
+
+
+purgeNode :: Node -> KS ()
+purgeNode n = do
+  g <- getG
+  when (gelem n g && outdeg g n == 0) $ do
+    putG (delNode n g)
+    mapM_ purgeNode [o | (o, _, _) <- inn g n]
+
 
 checkResult :: KS (Either String Bool)
 checkResult =  do
   (g, m1, m2) <- get
-  return $
-    error $
-      "uninplemented" ++ show [(n, l) | (n, l) <- labNodes g, outdeg g n == 0] ++
-        showGraph g
+  return $ Right False
+    --error $
+      --"uninplemented" ++ show [(n, l) | (n, l) <- labNodes g, outdeg g n == 0] ++
+        --showGraph g
     --where
   {-do
   case (length $ nub $ outs) of
@@ -114,11 +136,11 @@ calcBDDNode n = do
        return $ foldr bddAnd bddOne <$> sequence is
 
 -- | Checks Equivalence of circuits based on Kuelmann97
-equivKuelmann97_2 :: Checker
+equivKuelmann97_2 :: Verilog -> Verilog -> (Either String Bool, [Log])
 equivKuelmann97_2 v1 v2 = r
   where g = makeGraphV [v1, v2]
         todo = mybfs g
-        r = flip evalState (g, M.empty, M.empty) $ do
-          mapM_ kuelmannNode todo
-          checkResult
+        r = runWriter $ flip evalStateT (g, M.empty, M.empty) $ do
+              mapM_ kuelmannNode todo
+              checkResult
 

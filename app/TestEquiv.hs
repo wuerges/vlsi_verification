@@ -1,6 +1,7 @@
 import Lib
 import System.Environment
 import Data.Either
+import Text.Printf
 
 main :: IO ()
 main = do
@@ -11,5 +12,18 @@ doMain f1 f2 =  do
           p1 <- parseVerilog f1
           p2 <- parseVerilog f2
           case rights [p1, p2] of
-            [r1, r2] -> print $ equivKuelmann97_2 r1 r2
+            [r1, r2] -> outputResult $ equivKuelmann97_2 r1 r2
             _ -> error $ show $ lefts [p1, p2]
+
+
+outputResult (e, rs) = do
+  mapM_ outputResult' $ zip [1..] rs
+  case e of
+    Left m -> error $ "could not check if equivalent or not"
+    Right r -> putStrLn $ "Result: " ++ show r
+
+outputResult' :: (Int, (G, String)) -> IO()
+outputResult' (n, (g, comment)) = do
+  writeFile (printf "debug_graph_%03d.dot" n) $
+    "//" ++ comment ++ "\n" ++ showGraph g
+

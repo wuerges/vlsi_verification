@@ -17,8 +17,8 @@ import qualified Data.Map as M
 type Checker = Verilog -> Verilog -> Either String Bool
 
 -- | Stub for a checker. Always returns False
-equiv :: Checker
-equiv _ _ = Left "Dummy checker"
+--equiv :: Checker
+--equiv _ _ = Left "Dummy checker"
 
 
 -- | Checks Equivalence by calculating BDDs of all outputs.
