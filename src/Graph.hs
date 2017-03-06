@@ -224,7 +224,7 @@ makeGraphV vs =
   runIdx $ flip evalStateT startGraph $ do
     mapM_ initGraph vs
     mapM_ makeGraphV1 vs
-    get
+    fixSingleNodes <$> get
 
 
 makeGraphV1 :: Verilog -> GState G
