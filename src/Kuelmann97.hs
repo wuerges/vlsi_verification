@@ -71,9 +71,9 @@ mergeNodes c1 c2 = do
   put (g', m1, m2)
   purgeNode n2
   g'' <- getG
-  lift $ tell [(g, "before merge of " ++ show (n1,n2))]
-  lift $ tell [(g', "after the merge of " ++ show (n1,n2))]
-  lift $ tell [(g'', "after the purge of " ++ show n2)]
+  --lift $ tell [(g, "before merge of " ++ show (n1,n2))]
+  --lift $ tell [(g', "after the merge of " ++ show (n1,n2))]
+  --lift $ tell [(g'', "after the purge of " ++ show n2)]
   return $ n1
 
 
@@ -126,7 +126,7 @@ kuelmannNode n1 =
        Just bdd -> case M.lookup bdd m1 of
                      Nothing -> storeBDD bdd n1
                      Just n2 -> do
-                       lift $ tell $ [(g, "BDDs match: "++ show (n1, n2) ++ " -> "++ show bdd)]
+                       --lift $ tell $ [(g, "BDDs match: "++ show (n1, n2) ++ " -> "++ show bdd)]
                        nr <- mergeNodes n1 n2
                        storeBDD bdd nr
 
