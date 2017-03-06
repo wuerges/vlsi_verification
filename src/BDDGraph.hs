@@ -15,15 +15,15 @@ newtype BDD = B Int
   deriving Show
 
 data V =  V { input :: Node
-            , repr :: Node }
-  deriving (Eq, Ord, Show)
+            , repr :: Maybe Node }
+  deriving Show
 
 type T = Gr V Bool
 type Ctx = Context V Bool
 
 type BDDStateT a = State T a
 
-startingG = mkGraph [(0,V (-1)), (1, V (-1))] [] :: T
+startingG = mkGraph [(0,V 1 (Just 0)), (1, V 1 (Just 1))] [] :: T
 
 runBDDStateT is op = flip runStateT startingG op
 
@@ -31,7 +31,7 @@ initialBDD :: Node -> BDDStateT BDD
 initialBDD n = do
   g <- get
   unless (gelem n g) $ do
-    modify $ insNode (n, V n)
+    modify $ insNode (n, V n (Just n))
     modify $ insEdges [(n, 0, False), (n, 1, True)]
   return $ B n
 
@@ -40,15 +40,15 @@ bddOne = B 1
 -- | Exported function
 bddZero = B 0
 
-bval :: Node -> BDDStateT V
+bval :: Node -> BDDStateT Node
 bval o = do
   Just v <- flip lab o <$> get
-  return v
+  return $ input v
 
 dupNode :: V -> BDDStateT Node
-dupNode v = do
+dupNode (V v r) = do
   [n] <- newNodes 1 <$> get
-  modify $ insNode (n, v)
+  modify $ insNode (n, V v r)
   return n
 
 getSons :: Node -> BDDStateT (Node, Node)
@@ -78,13 +78,27 @@ negateBDD (B n) = do
   (l, r) <- getSons n
   B l' <- negateBDD $ B l
   B r' <- negateBDD $ B r
-  newParent v (l', r')
+  newParent (V v Nothing) (l', r')
+
+
+bddAndRepr :: Node -> BDD -> BDD ->  BDDStateT BDD
+bddAndRepr _ (B 0) _ = return $ B 0
+bddAndRepr _ _ (B 0) = return $ B 0
+bddAndRepr repr (B 1) (B b) = do
+  v <- bval b
+  (l, r) <- getSons b
+  newReprParent n (V v n) (l, r)
+
+bddAndRepr n (B b) (B 1) = do
+  (l, r) <- getSons b
+  newReprParent n b (l, r)
+
 
 bddAnd :: BDD -> BDD -> BDDStateT BDD
 bddAnd (B 0) _ = return $ B 0
 bddAnd _ (B 0) = return $ B 0
-bddAnd (B 1) b = return b
-bddAnd b (B 1) = return b
+bddAnd (B 1) b = newParent b
+bddAnd b (B 1) = newParent b
 
 bddAnd (B n1) (B n2) = do
   v_n1 <- bval n1
