@@ -1,4 +1,4 @@
-module Index (IdxState, newIdx, resetIdx, getIdx, getInputs, runIdx) where
+module Index (IdxState, newIdx, resetIdx, getIdx, getIdxs, runIdx) where
 
 import Verilog
 import Data.Map
@@ -7,13 +7,14 @@ import Control.Monad.State
 
 data V = V { idx :: Map Val Int
            , count :: Int
-           , inputs :: Map Val Int }
+           , inputs :: Map String Int }
 
 type IdxState = State V
 
 startIdx = V { idx = empty
              , count = 2
-             , inputs = fromList [(ValZero, 0), (ValOne, 1)] }
+             , inputs = empty }
+             --fromList [(ValZero, 0), (ValOne, 1)] }
 
 resetIdx :: IdxState ()
 resetIdx =  do
@@ -26,27 +27,27 @@ newIdx = do
   put $ V m (c+1) i
   return c
 
+
 getIdx :: Val -> IdxState Int
-getIdx n = do
+getIdx ValZero = return 0
+getIdx ValOne = return 1
+
+getIdx (Input n) = do
   V m c i <- get
   case Data.Map.lookup n i of
     Just r -> return r
-    Nothing -> case Data.Map.lookup n m of
-                 Just r -> return r
-                 Nothing -> do
-                   put $ V (insert n c m) (c+1) i
-                   return c
-
-getInput :: String -> IdxState Int
-getInput n = do
-  V m c i <- get
-  case Data.Map.lookup (Wire n) i of
-    Just r -> return r
     Nothing -> do
-      put $ V m (c+1) (insert (Wire n) c i)
+      put $ V m (c+1) (insert n c i)
       return c
 
-getInputs :: [String] -> IdxState [Int]
-getInputs = mapM getInput
+getIdx w = do
+  V m c i <- get
+  case Data.Map.lookup w m of
+    Just r -> return r
+    Nothing -> do put $ V (insert w c m) (c+1) i
+                  return c
+
+getIdxs :: [Val] -> IdxState [Int]
+getIdxs = mapM getIdx
 
 runIdx c = flip evalState startIdx c

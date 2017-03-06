@@ -61,10 +61,13 @@ getWire w = do
   addNode (w, n)
 
 
+addEdge :: Bool -> (Node, Node) -> GState ()
+addEdge b (n1, n2) =
+  modify $ insEdge (n1, n2, b)
+
 initGraph :: Verilog -> GState ()
 initGraph v = do
-  ns <- lift $ getInputs $ _inputs v
-  mapM_ addNode $ zip (map Wire $ _inputs v) ns
+  mapM_ getWire (map Input $ _inputs v)
 
 trues  = repeat True
 falses = repeat False
@@ -223,6 +226,14 @@ makeGraphV vs =
 
 makeGraphV1 :: Verilog -> GState G
 makeGraphV1 v = do
+  inputs <- mapM getWire (map Input $ _inputs v)
+  wires <- mapM getWire (map Wire $ _inputs v)
+  mapM_ (addEdge True) $ zip inputs wires
+
+  wire_outs <- mapM getWire (map Wire $ _outputs v)
+  outs <- mapM getWire (map Output $ _outputs v)
+  mapM_ (addEdge True) $ zip wire_outs outs
+
   mapM embedF $ reverse $ _functions v
   lift resetIdx
   get

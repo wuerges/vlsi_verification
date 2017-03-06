@@ -127,7 +127,9 @@ calcBDDNode n = do
   g <- getG
   if indeg g n == 0
      then return $ Just $ case val g n of
-                            Wire _ -> initialBDD n
+                            Input _ -> initialBDD n
+                            Wire _ -> error "should not be empty"
+                            Output _ -> error "should not be empty"
                             ValZero -> bddZero
                             ValOne -> bddOne
 

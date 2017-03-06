@@ -7,7 +7,11 @@ import Data.Maybe
 import Control.Monad.State
 
 
-data Val = Wire String | ValZero | ValOne
+data Val = Input String
+         | Output String
+         | Wire String
+         | ValZero
+         | ValOne
   deriving (Eq, Ord, Show)
 
 data Function = Fun { _op  :: Op
