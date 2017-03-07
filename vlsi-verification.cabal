@@ -38,6 +38,7 @@ library
                      , time
                      , transformers
                      , monad-memo
+                     , dotgen
   default-language:    Haskell2010
 
 

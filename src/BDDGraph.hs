@@ -3,6 +3,7 @@ module BDDGraph where
 
 --import Graph
 import Debug.Trace
+import Control.Monad.Writer
 --import Data.Graph.Inductive
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Dot
@@ -28,14 +29,31 @@ showBDD g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, (n, input v, r
 
 type Ctx = Context V Bool
 
-type BDDStateT a = State (T, [(Node,Node)]) a
+--type BDDStateT a = StateT (T, [(Node,Node)]) (Writer [String]) a
+type BDDStateT a = WriterT [String] (State (T, [(Node,Node)])) a
 
 startingG = mkGraph [(0,V (-1) (Just 0)), (1, V (-1) (Just 1))] [] :: T
 
-runBDDStateT is op = flip runState (startingG, []) $ do
+ {- For a StateT with a writer
+--type BDDStateT a = StateT (T, [(Node,Node)]) (Writer [String]) a
+  -}
+runBDDStateT is op = flip runState (startingG, []) $ runWriterT  $ do
   mapM initialBDD is
   op
 
+ {- For a StateT with a writer
+--type BDDStateT a = StateT (T, [(Node,Node)]) (Writer [String]) a
+runBDDStateT is op = runWriter $ flip runStateT (startingG, []) $ do
+  mapM initialBDD is
+  op
+  -}
+
+ {- -- For a simple state monad
+type BDDStateT a = State (T, [(Node,Node)]) a
+runBDDStateT is op = flip runState (startingG, []) $ do
+  mapM initialBDD is
+  op
+-}
 getG :: BDDStateT T
 getG = fst <$> get
 
@@ -186,8 +204,11 @@ reduce2 (B n1, B n2) = do
   (z1, o1) <- getSons n1
   (z2, o2) <- getSons n2
   when (z1 == z2 && o1 == o2) $ do
+    g0 <- getG
     moveParents n1 n2
     g <- getG
+    tell ["// reduce2 - before " ++ show (n1, n2) ++ "\n" ++ showBDD g0 ++ "\n" ]
+    tell ["// reduce2 - after " ++ show (n1, n2) ++ "\n" ++ showBDD g ++ "\n" ]
     equate (owner g n1) (owner g n2)
 
 moveParents :: Node -> Node -> BDDStateT ()

@@ -4,6 +4,7 @@ import TestBase
 import BDDGraph
 import Test.HUnit
 import Data.Graph.Inductive
+import Text.Printf
 
 initials_3_4_5 = runBDDStateT [3,4,5] $ return ()
 initials_3_4_5_dups = runBDDStateT [3,4,5] $ do
@@ -26,34 +27,47 @@ simpleDup =  runBDDStateT [3] $ do
 equate_4_5 = runBDDStateT [3] $ do
   equate (Just 4) (Just 5)
 
-showG = showBDD . fst . snd
 
+
+--getGM = fst . snd . fst
+--getEq = snd . snd . fst
+--showG = showBDD . getGM
+
+getGM = fst . snd
+getEq = snd . snd
+showG = showBDD . getGM
+
+writeLogs m = mapM_ writeLog $ zip [1..] (snd . fst $ m)
+  where
+    writeLog :: (Int, String) -> IO ()
+    writeLog (n, txt) = writeFile (printf "debug_log_%03d.dot" n) txt
 
 t1 = TestCase $ do
   putStrLn $ "\n======>SimpleDup: \n\n" ++ showG simpleDup ++ "\n\n"
   putStrLn $ "\n======>bddSpaceDup: \n\n" ++ showG bddSpace ++ "\n\n"
+  writeLogs bddSpace
 
 t2 = TestCase $
-  assertEqual "equate_4_5" (4,5) (head . snd . snd $ equate_4_5)
+  assertEqual "equate_4_5" (4,5) (head . getEq $ equate_4_5)
 
 t3 = TestCase $ do
-  let g = fst . snd $ equate_4_5
+  let g = getGM $ equate_4_5
       ls = layers g
   assertEqual "layers_4_5" [[0,1],[3]] ls
 
 t4 = TestCase $ do
-  let g = fst . snd $ initials_3_4_5
+  let g = getGM $ initials_3_4_5
       ls = layers g
   assertEqual "initials_3_4_5" [[0,1],[3], [4], [5]] ls
 
 t5 = TestCase $ do
-  let g = fst . snd $ initials_3_4_5_dups
+  let g = getGM $ initials_3_4_5_dups
       ls = layers g
   putStrLn $ "\nG: -> " ++ show g
   assertEqual "initials_3_4_5" [[0,1],[3, 6], [4, 7], [5, 8]] ls
 
 t6 = TestCase $ do
-  let g = fst . snd $ bddSpace
+  let g = getGM $ bddSpace
       ls = layers g
   assertEqual "layers_3_4_5" 4 (length ls)
 
