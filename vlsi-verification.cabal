@@ -44,13 +44,14 @@ library
 test-suite integration-tests
   type: exitcode-stdio-1.0
   hs-source-dirs:      test
-  main-is: TestSuite.hs
+  main-is: TestBDDGraph.hs
   build-depends:       base
                      , vlsi-verification
                      , HUnit
                      , time
                      , mtl
                      , containers
+                     , fgl
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
 
 -- Benchmark bench-simulation

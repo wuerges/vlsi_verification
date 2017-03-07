@@ -5,6 +5,7 @@ module BDDGraph where
 import Debug.Trace
 --import Data.Graph.Inductive
 import Data.Graph.Inductive
+import Data.Graph.Inductive.Dot
 --import Data.Graph.Inductive.Query.DFS (reachable)
 import Control.Monad.State
 --import Data.Maybe (fromMaybe)
@@ -21,6 +22,10 @@ data V =  V { input :: Node
   deriving Show
 
 type T = Gr V Bool
+
+-- | Converts a graph to a GraphViz format
+showBDD g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, (n, input v, repr v), os)) g
+
 type Ctx = Context V Bool
 
 type BDDStateT a = State (T, [(Node,Node)]) a
@@ -34,15 +39,21 @@ runBDDStateT is op = flip runState (startingG, []) $ do
 getG :: BDDStateT T
 getG = fst <$> get
 
+owner :: T -> Node -> Maybe Node
+owner g n = r
+  where Just (V _ r) = lab g n
+
 modifyG :: (T -> T) -> BDDStateT ()
 modifyG f = do
   (g, m) <- get
   put (f g, m)
 
-equate :: Node -> Node -> BDDStateT ()
+equate :: Maybe Node -> Maybe Node -> BDDStateT ()
 equate n1 n2 = do
   (g, m) <- get
-  put (g, (n1, n2):m)
+  case (n1, n2) of
+    (Just j1, Just j2) -> put (g, (j1, j2):m)
+    _ -> return ()
 
 cashOut :: BDDStateT [(Node, Node)]
 cashOut = do
@@ -77,10 +88,11 @@ dupNode (V v r) = do
 getSons :: Node -> BDDStateT (Node, Node)
 getSons n = do
   es <- flip out n <$> getG
+  g <- getG
   case es of
     [(_, l, False), (_, r, True)] -> return (l, r)
     [(_, r, False), (_, l, False)] -> return (l, r)
-    x -> error $ "x was unexpected" ++ show x
+    x -> error $ "x was unexpected: " ++ show (x, g)
 
 getL :: Node ->  BDDStateT Node
 getL n = fst <$> getSons n
@@ -114,7 +126,7 @@ bddAnd Nothing (B 0) _ =
   return $ B 0
 
 bddAnd (Just x) (B 0) _ = do
-  equate 0 x
+  equate (Just 0) (Just x)
   return $ B 0
 
 bddAnd repr _ (B 0) = bddAnd repr (B 0) undefined
@@ -159,7 +171,8 @@ reduce1 (B n) = do
   (z, o) <- getSons n
   when (z == o) $ do
     modifyG $ delEdges [(n,z), (n,o)]
-    equate z n
+    g <- getG
+    equate (owner g z) (owner g n)
     (z', o') <- getSons z
     setSons n z' o'
 
@@ -174,7 +187,8 @@ reduce2 (B n1, B n2) = do
   (z2, o2) <- getSons n2
   when (z1 == z2 && o1 == o2) $ do
     moveParents n1 n2
-    equate n1 n2
+    g <- getG
+    equate (owner g n1) (owner g n2)
 
 moveParents :: Node -> Node -> BDDStateT ()
 moveParents n1 n2 = do
@@ -191,10 +205,16 @@ reduceLayer ls = do
 ginput :: (Node, V) -> Node
 ginput (_,v) = input v
 
+layers g = map (map fst) $ groupBy (\a b -> ginput a == ginput b) ns
+  where ns = sortBy f $ labNodes g
+        f a b = ginput a `compare` ginput b
+
+
 reduceAll :: BDDStateT ()
 reduceAll = do
   g <- getG
-  let ns = labNodes g
-      layers = map (map fst) $ groupBy (\a b -> ginput a == ginput b) ns
-  mapM_ reduceLayer $ trace ("LAYERS: " ++ show layers) layers
+  --let ns = labNodes g
+      --layers = map (map fst) $ groupBy (\a b -> ginput a == ginput b) ns
+  --mapM_ reduceLayer $ trace ("LAYERS: " ++ show layers) layers
+  mapM_ reduceLayer $ (reverse $ layers g)
 
