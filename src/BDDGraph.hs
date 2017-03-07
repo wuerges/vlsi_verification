@@ -2,7 +2,7 @@
 module BDDGraph where
 
 --import Graph
---import Debug.Trace
+import Debug.Trace
 --import Data.Graph.Inductive
 import Data.Graph.Inductive
 --import Data.Graph.Inductive.Query.DFS (reachable)
@@ -14,7 +14,7 @@ import Data.List
 --import qualified Data.Set as S
 
 newtype BDD = B Int
-  deriving Show
+  deriving (Eq, Ord, Show)
 
 data V =  V { input :: Node
             , repr :: Maybe Node }
@@ -25,7 +25,7 @@ type Ctx = Context V Bool
 
 type BDDStateT a = State (T, [(Node,Node)]) a
 
-startingG = mkGraph [(0,V 1 (Just 0)), (1, V 1 (Just 1))] [] :: T
+startingG = mkGraph [(0,V (-1) (Just 0)), (1, V (-1) (Just 1))] [] :: T
 
 runBDDStateT is op = flip runState (startingG, []) $ do
   mapM initialBDD is
@@ -163,13 +163,13 @@ reduce1 (B n) = do
     (z', o') <- getSons z
     setSons n z' o'
 
-reduce2 :: BDD -> BDD -> BDDStateT ()
-reduce2 (B 0) _ =  return ()
-reduce2 _ (B 0) = return ()
-reduce2 (B 1) _ = return ()
-reduce2 _ (B 1) = return ()
+reduce2 :: (BDD, BDD) -> BDDStateT ()
+reduce2 (B 0, _) =  return ()
+reduce2 (_, B 0) = return ()
+reduce2 (B 1, _) = return ()
+reduce2 (_, B 1) = return ()
 
-reduce2 (B n1) (B n2) = do
+reduce2 (B n1, B n2) = do
   (z1, o1) <- getSons n1
   (z2, o2) <- getSons n2
   when (z1 == z2 && o1 == o2) $ do
@@ -180,3 +180,21 @@ moveParents :: Node -> Node -> BDDStateT ()
 moveParents n1 n2 = do
   ps_n1 <- flip inn n1 <$> getG
   modifyG $ insEdges [(o, n2, v) | (o,_,v) <- ps_n1]
+
+reduceLayer :: [Node] -> BDDStateT ()
+reduceLayer ls = do
+  mapM_ (reduce1 . B) ls
+  mapM_ reduce2 [(B a, B b) | a <- ls, b <- ls, a < b]
+
+
+
+ginput :: (Node, V) -> Node
+ginput (_,v) = input v
+
+reduceAll :: BDDStateT ()
+reduceAll = do
+  g <- getG
+  let ns = labNodes g
+      layers = map (map fst) $ groupBy (\a b -> ginput a == ginput b) ns
+  mapM_ reduceLayer $ trace ("LAYERS: " ++ show layers) layers
+
