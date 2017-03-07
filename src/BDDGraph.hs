@@ -1,15 +1,17 @@
 --module BDDGraph (BDD, initialBDD, negateBDD ) where
 module BDDGraph where
 
-import Graph
-import Debug.Trace
+--import Graph
+--import Debug.Trace
+--import Data.Graph.Inductive
 import Data.Graph.Inductive
-import Data.Graph.Inductive.Query.DFS (reachable)
+--import Data.Graph.Inductive.Query.DFS (reachable)
 import Control.Monad.State
-import Data.Maybe (fromMaybe)
+--import Data.Maybe (fromMaybe)
 import Data.Ord
-import Data.List (intersperse, sortOn, groupBy)
-import qualified Data.Set as S
+import Data.List
+--import Data.List (intersperse, sortOn, groupBy)
+--import qualified Data.Set as S
 
 newtype BDD = B Int
   deriving Show
@@ -21,18 +23,39 @@ data V =  V { input :: Node
 type T = Gr V Bool
 type Ctx = Context V Bool
 
-type BDDStateT a = State T a
+type BDDStateT a = State (T, [(Node,Node)]) a
 
 startingG = mkGraph [(0,V 1 (Just 0)), (1, V 1 (Just 1))] [] :: T
 
-runBDDStateT is op = flip runStateT startingG op
+runBDDStateT is op = flip runState (startingG, []) $ do
+  mapM initialBDD is
+  op
+
+getG :: BDDStateT T
+getG = fst <$> get
+
+modifyG :: (T -> T) -> BDDStateT ()
+modifyG f = do
+  (g, m) <- get
+  put (f g, m)
+
+equate :: Node -> Node -> BDDStateT ()
+equate n1 n2 = do
+  (g, m) <- get
+  put (g, (n1, n2):m)
+
+cashOut :: BDDStateT [(Node, Node)]
+cashOut = do
+  (g, m) <- get
+  put (g, [])
+  return m
 
 initialBDD :: Node -> BDDStateT BDD
 initialBDD n = do
-  g <- get
+  g <- getG
   unless (gelem n g) $ do
-    modify $ insNode (n, V n (Just n))
-    modify $ insEdges [(n, 0, False), (n, 1, True)]
+    modifyG $ insNode (n, V n (Just n))
+    modifyG $ insEdges [(n, 0, False), (n, 1, True)]
   return $ B n
 
 -- | Exported function
@@ -42,21 +65,22 @@ bddZero = B 0
 
 bval :: Node -> BDDStateT Node
 bval o = do
-  Just v <- flip lab o <$> get
+  Just v <- flip lab o <$> getG
   return $ input v
 
 dupNode :: V -> BDDStateT Node
 dupNode (V v r) = do
-  [n] <- newNodes 1 <$> get
-  modify $ insNode (n, V v r)
+  [n] <- newNodes 1 <$> getG
+  modifyG $ insNode (n, V v r)
   return n
 
 getSons :: Node -> BDDStateT (Node, Node)
 getSons n = do
-  es <- flip out n <$> get
+  es <- flip out n <$> getG
   case es of
     [(_, l, False), (_, r, True)] -> return (l, r)
     [(_, r, False), (_, l, False)] -> return (l, r)
+    x -> error $ "x was unexpected" ++ show x
 
 getL :: Node ->  BDDStateT Node
 getL n = fst <$> getSons n
@@ -66,7 +90,7 @@ getR n = snd <$> getSons n
 newParent :: V -> (Node, Node) -> BDDStateT BDD
 newParent n (l, r) = do
   n' <- dupNode n
-  modify $ insEdges [(n', l, False), (n', r, True)]
+  modifyG $ insEdges [(n', l, False), (n', r, True)]
   return $ B n'
 
 -- | Exported function
@@ -82,25 +106,30 @@ negateBDD (B n) = do
 
 
 bddAndRepr :: Node -> BDD -> BDD ->  BDDStateT BDD
-bddAndRepr _ (B 0) _ = return $ B 0
-bddAndRepr _ _ (B 0) = return $ B 0
-bddAndRepr repr (B 1) (B b) = do
+bddAndRepr n = bddAnd (Just n)
+
+bddAnd :: Maybe Node -> BDD -> BDD -> BDDStateT BDD
+
+bddAnd Nothing (B 0) _ =
+  return $ B 0
+
+bddAnd (Just x) (B 0) _ = do
+  equate 0 x
+  return $ B 0
+
+bddAnd repr _ (B 0) = bddAnd repr (B 0) undefined
+
+bddAnd repr (B 1) (B 1) = return $ B 1
+
+bddAnd repr (B 1) (B b) = do
   v <- bval b
   (l, r) <- getSons b
-  newReprParent n (V v n) (l, r)
+  newParent (V v repr) (l, r)
 
-bddAndRepr n (B b) (B 1) = do
-  (l, r) <- getSons b
-  newReprParent n b (l, r)
+bddAnd repr b (B 1) = bddAnd repr (B 1) b
 
 
-bddAnd :: BDD -> BDD -> BDDStateT BDD
-bddAnd (B 0) _ = return $ B 0
-bddAnd _ (B 0) = return $ B 0
-bddAnd (B 1) b = newParent b
-bddAnd b (B 1) = newParent b
-
-bddAnd (B n1) (B n2) = do
+bddAnd repr (B n1) (B n2) = do
   v_n1 <- bval n1
   v_n2 <- bval n2
   (z1, o1) <- getSons n1
@@ -108,20 +137,20 @@ bddAnd (B n1) (B n2) = do
 
   case v_n1 `compare` v_n2 of
     GT -> do
-      B z <- bddAnd (B z1) (B n2)
-      B o <- bddAnd (B o1) (B n2)
-      newParent v_n1 (z, o)
+      B z <- bddAnd Nothing (B z1) (B n2)
+      B o <- bddAnd Nothing (B o1) (B n2)
+      newParent (V v_n1 repr) (z, o)
     LT -> do
-      B z <- bddAnd (B z2) (B n1)
-      B o <- bddAnd (B o2) (B n1)
-      newParent v_n2 (z, o)
+      B z <- bddAnd Nothing (B z2) (B n1)
+      B o <- bddAnd Nothing (B o2) (B n1)
+      newParent (V v_n2 repr) (z, o)
     EQ -> do
-      B z <- bddAnd (B z1) (B z2)
-      B o <- bddAnd (B o1) (B o2)
-      newParent v_n1 (z, o)
+      B z <- bddAnd Nothing (B z1) (B z2)
+      B o <- bddAnd Nothing (B o1) (B o2)
+      newParent (V v_n1 repr) (z, o)
 
 setSons n z o =
-  modify $ insEdges [(n, z, False), (n, o, True)]
+  modifyG $ insEdges [(n, z, False), (n, o, True)]
 
 reduce1 :: BDD -> BDDStateT ()
 reduce1 (B 0) = return ()
@@ -129,7 +158,8 @@ reduce1 (B 1) = return ()
 reduce1 (B n) = do
   (z, o) <- getSons n
   when (z == o) $ do
-    modify $ delEdges [(n,z), (n,o)]
+    modifyG $ delEdges [(n,z), (n,o)]
+    equate z n
     (z', o') <- getSons z
     setSons n z' o'
 
@@ -144,8 +174,9 @@ reduce2 (B n1) (B n2) = do
   (z2, o2) <- getSons n2
   when (z1 == z2 && o1 == o2) $ do
     moveParents n1 n2
+    equate n1 n2
 
 moveParents :: Node -> Node -> BDDStateT ()
 moveParents n1 n2 = do
-  ps_n1 <- flip inn n1 <$> get
-  modify $ insEdges [(o, n2, v) | (o,_,v) <- ps_n1]
+  ps_n1 <- flip inn n1 <$> getG
+  modifyG $ insEdges [(o, n2, v) | (o,_,v) <- ps_n1]
