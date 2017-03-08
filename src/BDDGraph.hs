@@ -136,7 +136,10 @@ negateBDD (B n) = do
 
 
 bddAndRepr :: Node -> BDD -> BDD ->  BDDStateT BDD
-bddAndRepr n = bddAnd (Just n)
+bddAndRepr n b1 b2 = do
+  g <- getG
+  tell ["// bddAndRepr - before " ++ show (n, b1, b2) ++ "\n" ++ showBDD g ++ "\n" ]
+  bddAnd (Just n) b1 b2
 
 bddAnd :: Maybe Node -> BDD -> BDD -> BDDStateT BDD
 
@@ -214,6 +217,7 @@ reduce2 (B n1, B n2) = do
 moveParents :: Node -> Node -> BDDStateT ()
 moveParents n1 n2 = do
   ps_n1 <- flip inn n1 <$> getG
+  modifyG $ delEdges [(o, d) | (o, d, _) <- ps_n1]
   modifyG $ insEdges [(o, n2, v) | (o,_,v) <- ps_n1]
 
 reduceLayer :: [Node] -> BDDStateT ()
@@ -237,5 +241,5 @@ reduceAll = do
   --let ns = labNodes g
       --layers = map (map fst) $ groupBy (\a b -> ginput a == ginput b) ns
   --mapM_ reduceLayer $ trace ("LAYERS: " ++ show layers) layers
-  mapM_ reduceLayer $ (reverse $ layers g)
+  mapM_ reduceLayer $ (layers g)
 

@@ -15,8 +15,8 @@ initials_3_4_5_dups = runBDDStateT [3,4,5] $ do
 bddSpace = runBDDStateT [3,4,5] $ do
   bddAndRepr 6 (B 3) (B 4)
   bddAndRepr 7 (B 4) (B 5)
-  bddAndRepr 8 (B 6) (B 5)
-  bddAndRepr 9 (B 3) (B 7)
+  bddAndRepr 8 (B 7) (B 5)
+  bddAndRepr 9 (B 3) (B 9)
   reduceAll
 
 simpleDup =  runBDDStateT [3] $ do
@@ -43,8 +43,8 @@ writeLogs m = mapM_ writeLog $ zip [1..] (snd . fst $ m)
     writeLog (n, txt) = writeFile (printf "debug_log_%03d.dot" n) txt
 
 t1 = TestCase $ do
-  putStrLn $ "\n======>SimpleDup: \n\n" ++ showG simpleDup ++ "\n\n"
-  putStrLn $ "\n======>bddSpaceDup: \n\n" ++ showG bddSpace ++ "\n\n"
+  putStrLn $ "\n=> SimpleDup: \n\n" ++ showG simpleDup ++ "\n" ++ show (getEq simpleDup)  ++"\n\n"
+  putStrLn $ "\n=> bddSpaceDup: \n\n" ++ showG bddSpace ++ "\n" ++ show (getEq bddSpace) ++ "\n\n"
   writeLogs bddSpace
 
 t2 = TestCase $
