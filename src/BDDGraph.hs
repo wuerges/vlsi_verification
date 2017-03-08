@@ -1,19 +1,15 @@
 --module BDDGraph (BDD, initialBDD, negateBDD ) where
 module BDDGraph where
 
---import Graph
+import Text.Dot
 import Debug.Trace
 import Control.Monad.Writer
---import Data.Graph.Inductive
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Dot
---import Data.Graph.Inductive.Query.DFS (reachable)
 import Control.Monad.State
---import Data.Maybe (fromMaybe)
 import Data.Ord
 import Data.List
---import Data.List (intersperse, sortOn, groupBy)
---import qualified Data.Set as S
+import Data.Maybe
 
 newtype BDD = B Int
   deriving (Eq, Ord, Show)
@@ -24,8 +20,20 @@ data V =  V { input :: Node
 
 type T = Gr V Bool
 
+labelN (n, v) = [("label", label)] ++ maybe [] (const [("shape","rectangle")]) (repr v)
+  where label = show n ++ "," ++ show (input v) ++ "," ++ r
+        r = maybe "" show (repr v)
+
 -- | Converts a graph to a GraphViz format
-showBDD g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, (n, input v, repr v), os)) g
+showBDD :: T -> String
+showBDD g = showDot $ do
+  --fglToDot $ gmap (\(is, n, v, os) -> ([], n, (n, input v, repr v), [])) g
+  forM_ (labNodes g) $ \(n, v) -> userNode (userNodeId n)  (labelN (n, v))
+
+  forM_ (labEdges g) $
+    \(o, d, t) -> edge (userNodeId o) (userNodeId d) (if t then [] else [("style","dotted")])
+  mapM_ (same . map userNodeId) (layers g)
+
 
 type Ctx = Context V Bool
 
@@ -134,6 +142,31 @@ negateBDD (B n) = do
   B r' <- negateBDD $ B r
   newParent (V v Nothing) (l', r')
 
+bddPurge :: BDD -> BDDStateT ()
+bddPurge (B 0) = return ()
+bddPurge (B 1) = return ()
+bddPurge (B n) = do
+  ps <- flip inn n <$> getG
+  when (null ps) $ do
+    (l, r) <- getSons n
+    modifyG $ delNode n
+    bddPurge' (B l)
+    bddPurge' (B r)
+
+
+bddPurge' :: BDD -> BDDStateT ()
+bddPurge' (B n) = do
+  r <- reprM n
+  unless (isJust r) $ bddPurge (B n)
+
+
+bddAndMany :: Maybe Node -> [BDD] -> BDDStateT BDD
+bddAndMany n [] = error $ "cannot conjoin nothing"
+bddAndMany n [a, b] = bddAnd n a b
+bddAndMany n (a:os) = do
+  r <- bddAndMany Nothing os
+  bddAnd n a r
+
 
 bddAndRepr :: Node -> BDD -> BDD ->  BDDStateT BDD
 bddAndRepr n b1 b2 = do
@@ -214,11 +247,25 @@ reduce2 (B n1, B n2) = do
     tell ["// reduce2 - after " ++ show (n1, n2) ++ "\n" ++ showBDD g ++ "\n" ]
     equate (owner g n1) (owner g n2)
 
-moveParents :: Node -> Node -> BDDStateT ()
-moveParents n1 n2 = do
+
+moveParents' :: Node -> Node -> BDDStateT ()
+moveParents' n1 n2 = do
   ps_n1 <- flip inn n1 <$> getG
   modifyG $ delEdges [(o, d) | (o, d, _) <- ps_n1]
   modifyG $ insEdges [(o, n2, v) | (o,_,v) <- ps_n1]
+
+
+reprM :: Node -> BDDStateT (Maybe Node)
+reprM n = do
+  g <- getG
+  let Just v = lab g n
+  return $ repr v
+
+
+moveParents :: Node -> Node -> BDDStateT ()
+moveParents n1 n2 = do
+  r <- reprM n1
+  maybe (moveParents' n1 n2) (\_ -> moveParents' n2 n1) r
 
 reduceLayer :: [Node] -> BDDStateT ()
 reduceLayer ls = do
@@ -230,6 +277,7 @@ reduceLayer ls = do
 ginput :: (Node, V) -> Node
 ginput (_,v) = input v
 
+layers :: T -> [[Node]]
 layers g = map (map fst) $ groupBy (\a b -> ginput a == ginput b) ns
   where ns = sortBy f $ labNodes g
         f a b = ginput a `compare` ginput b
@@ -238,8 +286,5 @@ layers g = map (map fst) $ groupBy (\a b -> ginput a == ginput b) ns
 reduceAll :: BDDStateT ()
 reduceAll = do
   g <- getG
-  --let ns = labNodes g
-      --layers = map (map fst) $ groupBy (\a b -> ginput a == ginput b) ns
-  --mapM_ reduceLayer $ trace ("LAYERS: " ++ show layers) layers
-  mapM_ reduceLayer $ (layers g)
+  mapM_ reduceLayer $ layers g
 
