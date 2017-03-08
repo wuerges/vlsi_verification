@@ -215,7 +215,7 @@ fixSingleNode n g =  case match n g of
     (Nothing, _)  -> error "Could not match context in fixSingleNode"
 
 -- | Cleans up graph after adding extra single nodes
-fixSingleNodes g = trace ("fix singles ")
+fixSingleNodes g = --trace ("fix singles ")
     g'
   where g' = foldr fixSingleNode g (nodes g)
 

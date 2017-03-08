@@ -92,12 +92,22 @@ purgeNode n = do
     mapM_ purgeNode [o | (o, _, _) <- inn g n]
 
 
-checkResult :: [String] -> [String] ->
-  KS (Either String Bool)
 
-checkResult v1 v2 =  do
-  (g, m1, m2) <- get
-  return $ traceShow (getOutputs g, v1, v2) $ Right False
+
+getPreds :: Node -> KS (Node, [(Node, Bool)])
+getPreds y = do
+  g <- getG
+  return (y, sort $ [(o, v) | (o, d, v) <- inn g y])
+
+checkResult :: KS (Either String Bool)
+checkResult =  do
+  (g, _, _) <- get
+  ps <- mapM getPreds (getOutputs g)
+  let ps'  = sortBy (\a b -> snd a `compare` snd b) ps
+      ps'' = groupBy (\a b -> snd a == snd b) ps'
+      r = all (\x -> length x >= 2) ps''
+  return $ -- $ traceShow (getOutputs g, ps'', r) $
+    Right r
     --error $
       --"uninplemented" ++ show [(n, l) | (n, l) <- labNodes g, outdeg g n == 0] ++
         --showGraph g
@@ -167,7 +177,7 @@ runKS is g m = (r, kuelLog ++ bddLog)
 equivKuelmann97_2 :: Verilog -> Verilog -> (Either String Bool, [String])
 equivKuelmann97_2 v1 v2 =
   runKS inputs g $ do mapM_ kuelmannNode todo
-                      checkResult (_outputs v1) (_outputs v2)
+                      checkResult
   where g = makeGraphV [v1, v2]
         todo = mybfs g
         inputs = getInputs g
