@@ -13,10 +13,6 @@ initials_3_4_5_dups = runBDDStateT [3,4,5] $ do
   dupNode (V 5 (Just 12))
 
 bddSpace = runBDDStateT [3,4,5] $ do
-  --bddAndRepr 6 (B 3) (B 4)
-  --bddAndRepr 7 (B 4) (B 5)
-  --bddAndRepr 8 (B 7) (B 5)
-  --bddAndRepr 9 (B 3) (B 9)
   b1 <- bddAndRepr 6 (B 3) (B 4)
   b2 <- bddAndRepr 7 (B 4) (B 5)
   bddAndRepr 8 b1 (B 5)
