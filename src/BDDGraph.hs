@@ -38,7 +38,7 @@ showBDD g = showDot $ do
 type Ctx = Context V Bool
 
 --type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
-type BDDState a = WriterT [String] (State (T, [(Node,Node)])) a
+type BDDState = WriterT [String] (State (T, [(Node,Node)]))
 
 startingG = mkGraph [(0,V (-1) (Just 0)), (1, V (-1) (Just 1))] [] :: T
 

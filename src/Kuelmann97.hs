@@ -4,7 +4,8 @@ module Kuelmann97 where
 import Verilog
 import Equivalence
 import Graph
-import BDD --Graph (BDD, initialBDD, negateBDD, bddOne, bddAnd)
+import BDDGraph (BDDState, runBDDState) --Graph (BDD, initialBDD, negateBDD, bddOne, bddAnd)
+import BDD
 
 import Control.Monad.State
 import Control.Monad.Writer
@@ -22,7 +23,8 @@ import qualified Data.Set as S
 --type KS a = WriterT String (State (G, M.Map BDD Node)) a
 --
 type Log = (G, String)
-type KS a = StateT  (G, M.Map BDD Node, M.Map Node BDD) (Writer [Log]) a
+--type KS a = WriterT [Log] (State (G, M.Map BDD Node, M.Map Node BDD)) a
+type KS = WriterT [Log] (StateT (G, M.Map BDD Node, M.Map Node BDD) BDDState)
 
 getNodeBddM :: KS (M.Map Node BDD)
 getNodeBddM = do
@@ -153,14 +155,21 @@ calcBDDNode n = do
        return $ foldr bddAnd bddOne <$> sequence is
 
 
-runKS :: G -> KS a -> (a, [Log])
-runKS g m = runWriter $ flip evalStateT (g, M.empty, M.empty) m
+runKS :: [Node] -> G -> KS a -> (a, [Log])
+runKS is g m = r
+  --((a0, [String]), (BDDGraph.T, [(Node, Node)]))
+
+ where
+   bddLog :: [String]
+   eqs :: [(Node, Node)]
+   ((r, bddLog), (bddGraphRes, eqs)) = runBDDState is $ flip evalStateT (g, M.empty, M.empty) (runWriterT m)
 
 -- | Checks Equivalence of circuits based on Kuelmann97
 equivKuelmann97_2 :: Verilog -> Verilog -> (Either String Bool, [Log])
 equivKuelmann97_2 v1 v2 =
-  runKS g $ do mapM_ kuelmannNode todo
-               checkResult
+  runKS inputs g $ do mapM_ kuelmannNode todo
+                      checkResult
   where g = makeGraphV [v1, v2]
         todo = mybfs g
+        inputs = undefined
 
