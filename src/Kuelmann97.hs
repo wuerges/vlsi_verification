@@ -14,7 +14,7 @@ import Data.Maybe
 
 import Data.List hiding (union)
 import Data.Graph.Inductive
---import Debug.Trace
+import Debug.Trace
 import qualified Data.Map as M
 import qualified Data.IntMap as I
 
@@ -92,10 +92,12 @@ purgeNode n = do
     mapM_ purgeNode [o | (o, _, _) <- inn g n]
 
 
-checkResult :: KS (Either String Bool)
-checkResult =  do
+checkResult :: [String] -> [String] ->
+  KS (Either String Bool)
+
+checkResult v1 v2 =  do
   (g, m1, m2) <- get
-  return $ Right False
+  return $ traceShow (getOutputs g, v1, v2) $ Right False
     --error $
       --"uninplemented" ++ show [(n, l) | (n, l) <- labNodes g, outdeg g n == 0] ++
         --showGraph g
@@ -155,20 +157,17 @@ calcBDDNode n = do
 
 
 runKS :: [Node] -> G -> KS a -> (a, [String])
-runKS is g m = r
+runKS is g m = (r, kuelLog ++ bddLog)
   --((a0, [String]), (BDDGraph.T, [(Node, Node)]))
 
  where
-   bddLog :: [String]
-   eqs :: [(Node, Node)]
-   ((r, bddLog), (bddGraphRes, eqs)) = runBDDState is $ flip evalStateT (g, M.empty, M.empty) (runWriterT m)
+   (((r, kuelLog), bddLog), (bddGraphRes, eqs)) = runBDDState is $ flip evalStateT (g, M.empty, M.empty) (runWriterT m)
 
 -- | Checks Equivalence of circuits based on Kuelmann97
 equivKuelmann97_2 :: Verilog -> Verilog -> (Either String Bool, [String])
 equivKuelmann97_2 v1 v2 =
   runKS inputs g $ do mapM_ kuelmannNode todo
-                      checkResult
+                      checkResult (_outputs v1) (_outputs v2)
   where g = makeGraphV [v1, v2]
         todo = mybfs g
-        inputs = undefined
-
+        inputs = getInputs g

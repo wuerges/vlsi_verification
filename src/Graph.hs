@@ -12,8 +12,9 @@ import Data.List
 import Control.Arrow
 import Debug.Trace
 import System.Random
+import qualified Data.Map as M
 import qualified Data.Set as S
-import qualified Data.IntMap as M
+-- import qualified Data.IntMap as M
 
 -- | The graph that models the circuit after Nand Synthesis Model
 
@@ -218,9 +219,13 @@ fixSingleNodes g = trace ("fix singles ")
     g'
   where g' = foldr fixSingleNode g (nodes g)
 
-
 makeGraphV :: [Verilog] -> G
-makeGraphV vs =
+makeGraphV vs = g
+  where
+    (g, _, _, _) = makeGraphV' vs
+
+makeGraphV' :: [Verilog] -> (G, M.Map Val Int, M.Map Val Int, M.Map String Int)
+makeGraphV' vs =
   runIdx $ flip evalStateT startGraph $ do
     mapM_ initGraph vs
     mapM_ makeGraphV1 vs
@@ -245,28 +250,44 @@ makeGraphV1 v = do
   --trace "Finished Embeddeding all functinos"  $
 
 -- | Calculates the nodes without input edges
-inputs :: Gr a b -> [Int]
-inputs g = [n | n <- nodes g, indeg g n == 0]
+
+isInput (_, Input _) = True
+isInput _ = False
+
+getInputs :: G -> [Node]
+getInputs g = [n |
+  (n, v) <- labNodes g
+           , isInput (n, v) ]
+
+
+mybfs :: G -> [Node]
+mybfs = topsort
+
 
 -- | Calculates the nodes without output edges
-outputs :: Gr a b -> [Int]
-outputs g = [n | n <- nodes g, outdeg g n == 0]
+isOutput (_, Output _) = True
+isOutput _ = False
+
+getOutputs :: G -> [Node]
+getOutputs g = [n |
+  (n, v) <- labNodes g
+          , isOutput (n, v) ]
 
 -- | Renumber the nodes according solely to their inputs,
 -- | so nodes with the same inputs will have the same id
 -- | regardless of the previous.
 
-
+{-
 mybfs :: Gr a b -> [Int]
 mybfs g | isEmpty g = []
         | otherwise = inputs g ++ (mybfs $ delNodes (inputs g) g)
 
-
+-}
 
 -- | simulates the circuit's behavior.
 -- | Receives the graph of the circuit as input and a list of inputs, in order.
 -- | produces the outputs, in order.
-
+{-
 simulate1 :: Context () Bool -> M.IntMap Bool -> M.IntMap Bool
 simulate1 = undefined
 {-
@@ -299,3 +320,4 @@ contexts g = map (context g) (topsort g) --ufold (:) [] g
 
 removeStuckAt0 :: [Int] -> G -> G
 removeStuckAt0 = undefined -- TODO
+-}
