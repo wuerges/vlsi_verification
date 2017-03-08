@@ -1,6 +1,7 @@
 --module BDDGraph (BDD, initialBDD, negateBDD ) where
 module BDDGraph where
 
+import Text.Dot
 import Debug.Trace
 import Control.Monad.Writer
 import Data.Graph.Inductive
@@ -18,8 +19,20 @@ data V =  V { input :: Node
 
 type T = Gr V Bool
 
+labelN (n, v) = [("label", label)] ++ maybe [] (\_ -> [("shape","rectangle")]) (repr v)
+  where label = show n ++ "," ++ show (input v) ++ "," ++ r
+        r = maybe "" show (repr v)
+
 -- | Converts a graph to a GraphViz format
-showBDD g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, (n, input v, repr v), os)) g
+showBDD :: T -> String
+showBDD g = showDot $ do
+  --fglToDot $ gmap (\(is, n, v, os) -> ([], n, (n, input v, repr v), [])) g
+  forM_ (labNodes g) $ \(n, v) -> userNode (userNodeId n)  (labelN (n, v))
+
+  forM_ (labEdges g) $
+    \(o, d, t) -> edge (userNodeId o) (userNodeId d) (if t then [] else [("style","dotted")])
+  mapM_ (same . map userNodeId) (layers g)
+
 
 type Ctx = Context V Bool
 
@@ -224,6 +237,7 @@ reduceLayer ls = do
 ginput :: (Node, V) -> Node
 ginput (_,v) = input v
 
+layers :: T -> [[Node]]
 layers g = map (map fst) $ groupBy (\a b -> ginput a == ginput b) ns
   where ns = sortBy f $ labNodes g
         f a b = ginput a `compare` ginput b
