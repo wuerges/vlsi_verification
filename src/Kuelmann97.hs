@@ -22,9 +22,8 @@ import qualified Data.Set as S
 
 --type KS a = WriterT String (State (G, M.Map BDD Node)) a
 --
-type Log = (G, String)
 --type KS a = WriterT [Log] (State (G, M.Map BDD Node, M.Map Node BDD)) a
-type KS = WriterT [Log] (StateT (G, M.Map BDD Node, M.Map Node BDD) BDDState)
+type KS = WriterT [String] (StateT (G, M.Map BDD Node, M.Map Node BDD) BDDState)
 
 getNodeBddM :: KS (M.Map Node BDD)
 getNodeBddM = do
@@ -155,7 +154,7 @@ calcBDDNode n = do
        return $ foldr bddAnd bddOne <$> sequence is
 
 
-runKS :: [Node] -> G -> KS a -> (a, [Log])
+runKS :: [Node] -> G -> KS a -> (a, [String])
 runKS is g m = r
   --((a0, [String]), (BDDGraph.T, [(Node, Node)]))
 
@@ -165,7 +164,7 @@ runKS is g m = r
    ((r, bddLog), (bddGraphRes, eqs)) = runBDDState is $ flip evalStateT (g, M.empty, M.empty) (runWriterT m)
 
 -- | Checks Equivalence of circuits based on Kuelmann97
-equivKuelmann97_2 :: Verilog -> Verilog -> (Either String Bool, [Log])
+equivKuelmann97_2 :: Verilog -> Verilog -> (Either String Bool, [String])
 equivKuelmann97_2 v1 v2 =
   runKS inputs g $ do mapM_ kuelmannNode todo
                       checkResult

@@ -22,8 +22,8 @@ outputResult (e, rs) = do
     Left m -> error $ "could not check if equivalent or not"
     Right r -> putStrLn $ "Result: " ++ show r
 
-outputResult' :: (Int, (G, String)) -> IO()
-outputResult' (n, (g, comment)) = do
-  writeFile (printf "debug_graph_%03d.dot" n) $
-    "//" ++ comment ++ "\n" ++ showGraph g
+outputResult' :: (Int, String) -> IO()
+outputResult' (n, comment) = do
+  writeFile (printf "debug_graph_%03d.dot" n)
+    comment
 
