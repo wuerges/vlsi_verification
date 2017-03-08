@@ -1,19 +1,13 @@
 --module BDDGraph (BDD, initialBDD, negateBDD ) where
 module BDDGraph where
 
---import Graph
 import Debug.Trace
 import Control.Monad.Writer
---import Data.Graph.Inductive
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Dot
---import Data.Graph.Inductive.Query.DFS (reachable)
 import Control.Monad.State
---import Data.Maybe (fromMaybe)
 import Data.Ord
 import Data.List
---import Data.List (intersperse, sortOn, groupBy)
---import qualified Data.Set as S
 
 newtype BDD = B Int
   deriving (Eq, Ord, Show)
@@ -234,8 +228,5 @@ layers g = map (map fst) $ groupBy (\a b -> ginput a == ginput b) ns
 reduceAll :: BDDStateT ()
 reduceAll = do
   g <- getG
-  --let ns = labNodes g
-      --layers = map (map fst) $ groupBy (\a b -> ginput a == ginput b) ns
-  --mapM_ reduceLayer $ trace ("LAYERS: " ++ show layers) layers
   mapM_ reduceLayer $ (reverse $ layers g)
 
