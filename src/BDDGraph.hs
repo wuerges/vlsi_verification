@@ -221,11 +221,25 @@ reduce2 (B n1, B n2) = do
     tell ["// reduce2 - after " ++ show (n1, n2) ++ "\n" ++ showBDD g ++ "\n" ]
     equate (owner g n1) (owner g n2)
 
-moveParents :: Node -> Node -> BDDStateT ()
-moveParents n1 n2 = do
+
+moveParents' :: Node -> Node -> BDDStateT ()
+moveParents' n1 n2 = do
   ps_n1 <- flip inn n1 <$> getG
   modifyG $ delEdges [(o, d) | (o, d, _) <- ps_n1]
   modifyG $ insEdges [(o, n2, v) | (o,_,v) <- ps_n1]
+
+
+reprM :: Node -> BDDStateT (Maybe Node)
+reprM n = do
+  g <- getG
+  let Just v = lab g n
+  return $ repr v
+
+
+moveParents :: Node -> Node -> BDDStateT ()
+moveParents n1 n2 = do
+  r <- reprM n1
+  maybe (moveParents' n1 n2) (\_ -> moveParents' n2 n1) r
 
 reduceLayer :: [Node] -> BDDStateT ()
 reduceLayer ls = do
