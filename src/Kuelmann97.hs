@@ -91,9 +91,6 @@ purgeNode n = do
     putG (delNode n g)
     mapM_ purgeNode [o | (o, _, _) <- inn g n]
 
-
-
-
 getPreds :: Node -> KS (Node, [(Node, Bool)])
 getPreds y = do
   g <- getG
@@ -108,16 +105,6 @@ checkResult =  do
       r = all (\x -> length x >= 2) ps''
   return $ -- $ traceShow (getOutputs g, ps'', r) $
     Right r
-    --error $
-      --"uninplemented" ++ show [(n, l) | (n, l) <- labNodes g, outdeg g n == 0] ++
-        --showGraph g
-    --where
-  {-do
-  case (length $ nub $ outs) of
-    1 -> return $ Right True
-    _ -> return $ Right False
-    -}
-
 
 storeBDD :: BDD -> Node -> KS ()
 storeBDD bdd n = do
