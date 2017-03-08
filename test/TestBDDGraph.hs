@@ -35,7 +35,7 @@ equate_4_5 = runBDDStateT [3] $ do
 
 getGM = fst . snd
 getEq = snd . snd
-showG = showBDD . getGM
+--showG = showBDD . getGM
 
 writeLogs m = mapM_ writeLog $ zip [1..] (snd . fst $ m)
   where
@@ -43,9 +43,11 @@ writeLogs m = mapM_ writeLog $ zip [1..] (snd . fst $ m)
     writeLog (n, txt) = writeFile (printf "debug_log_%03d.dot" n) txt
 
 t1 = TestCase $ do
-  putStrLn $ "\n=> SimpleDup: \n\n" ++ showG simpleDup ++ "\n" ++ show (getEq simpleDup)  ++"\n\n"
-  putStrLn $ "\n=> bddSpaceDup: \n\n" ++ showG bddSpace ++ "\n" ++ show (getEq bddSpace) ++ "\n\n"
-  writeLogs bddSpace
+  --putStrLn $ "\n=> SimpleDup: \n\n" ++ showG simpleDup ++ "\n" ++ show (getEq simpleDup)  ++"\n\n"
+  --putStrLn $ "\n=> bddSpaceDup: \n\n" ++ showG bddSpace ++ "\n" ++ show (getEq bddSpace) ++ "\n\n"
+  --writeLogs bddSpace
+  assertEqual "There must be only one equate" 1 (length $ getEq bddSpace)
+  assertBool "The equate must be either (8,9) or (9,8)" ((elem (8, 9) $ getEq bddSpace) || (elem (9, 8) $ getEq bddSpace))
 
 t2 = TestCase $
   assertEqual "equate_4_5" (4,5) (head . getEq $ equate_4_5)
@@ -63,7 +65,7 @@ t4 = TestCase $ do
 t5 = TestCase $ do
   let g = getGM $ initials_3_4_5_dups
       ls = layers g
-  putStrLn $ "\nG: -> " ++ show g
+  --putStrLn $ "\nG: -> " ++ show g
   assertEqual "initials_3_4_5" [[0,1],[3, 6], [4, 7], [5, 8]] ls
 
 t6 = TestCase $ do
