@@ -6,13 +6,13 @@ import Test.HUnit
 import Data.Graph.Inductive
 import Text.Printf
 
-initials_3_4_5 = runBDDStateT [3,4,5] $ return ()
-initials_3_4_5_dups = runBDDStateT [3,4,5] $ do
+initials_3_4_5 = runBDDState [3,4,5] $ return ()
+initials_3_4_5_dups = runBDDState [3,4,5] $ do
   dupNode (V 3 (Just 10))
   dupNode (V 4 (Just 11))
   dupNode (V 5 (Just 12))
 
-bddSpace = runBDDStateT [3,4,5] $ do
+bddSpace = runBDDState [3,4,5] $ do
   b1 <- bddAndRepr 6 (B 3) (B 4)
   b2 <- bddAndRepr 7 (B 4) (B 5)
   --bddAndRepr 8 b1 (B 5)
@@ -20,12 +20,12 @@ bddSpace = runBDDStateT [3,4,5] $ do
   bddAndMany (Just 8) [b1, B 5]
   reduceAll
 
-simpleDup =  runBDDStateT [3] $ do
+simpleDup =  runBDDState [3] $ do
   (l, r) <- getSons 3
   newParent (V 3 (Just 4)) (l, r)
   reduceAll
 
-equate_4_5 = runBDDStateT [3] $ do
+equate_4_5 = runBDDState [3] $ do
   equate (Just 4) (Just 5)
 
 

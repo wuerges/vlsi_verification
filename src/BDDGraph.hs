@@ -37,57 +37,57 @@ showBDD g = showDot $ do
 
 type Ctx = Context V Bool
 
---type BDDStateT a = StateT (T, [(Node,Node)]) (Writer [String]) a
-type BDDStateT a = WriterT [String] (State (T, [(Node,Node)])) a
+--type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
+type BDDState a = WriterT [String] (State (T, [(Node,Node)])) a
 
 startingG = mkGraph [(0,V (-1) (Just 0)), (1, V (-1) (Just 1))] [] :: T
 
  {- For a StateT with a writer
---type BDDStateT a = StateT (T, [(Node,Node)]) (Writer [String]) a
+--type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
   -}
-runBDDStateT is op = flip runState (startingG, []) $ runWriterT  $ do
+runBDDState is op = flip runState (startingG, []) $ runWriterT  $ do
   mapM initialBDD is
   op
 
  {- For a StateT with a writer
---type BDDStateT a = StateT (T, [(Node,Node)]) (Writer [String]) a
-runBDDStateT is op = runWriter $ flip runStateT (startingG, []) $ do
+--type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
+runBDDState is op = runWriter $ flip runStateT (startingG, []) $ do
   mapM initialBDD is
   op
   -}
 
  {- -- For a simple state monad
-type BDDStateT a = State (T, [(Node,Node)]) a
-runBDDStateT is op = flip runState (startingG, []) $ do
+type BDDState a = State (T, [(Node,Node)]) a
+runBDDState is op = flip runState (startingG, []) $ do
   mapM initialBDD is
   op
 -}
-getG :: BDDStateT T
+getG :: BDDState T
 getG = fst <$> get
 
 owner :: T -> Node -> Maybe Node
 owner g n = r
   where Just (V _ r) = lab g n
 
-modifyG :: (T -> T) -> BDDStateT ()
+modifyG :: (T -> T) -> BDDState ()
 modifyG f = do
   (g, m) <- get
   put (f g, m)
 
-equate :: Maybe Node -> Maybe Node -> BDDStateT ()
+equate :: Maybe Node -> Maybe Node -> BDDState ()
 equate n1 n2 = do
   (g, m) <- get
   case (n1, n2) of
     (Just j1, Just j2) -> put (g, (j1, j2):m)
     _ -> return ()
 
-cashOut :: BDDStateT [(Node, Node)]
+cashOut :: BDDState [(Node, Node)]
 cashOut = do
   (g, m) <- get
   put (g, [])
   return m
 
-initialBDD :: Node -> BDDStateT BDD
+initialBDD :: Node -> BDDState BDD
 initialBDD n = do
   g <- getG
   unless (gelem n g) $ do
@@ -100,18 +100,18 @@ bddOne = B 1
 -- | Exported function
 bddZero = B 0
 
-bval :: Node -> BDDStateT Node
+bval :: Node -> BDDState Node
 bval o = do
   Just v <- flip lab o <$> getG
   return $ input v
 
-dupNode :: V -> BDDStateT Node
+dupNode :: V -> BDDState Node
 dupNode (V v r) = do
   [n] <- newNodes 1 <$> getG
   modifyG $ insNode (n, V v r)
   return n
 
-getSons :: Node -> BDDStateT (Node, Node)
+getSons :: Node -> BDDState (Node, Node)
 getSons n = do
   es <- flip out n <$> getG
   g <- getG
@@ -120,19 +120,19 @@ getSons n = do
     [(_, r, False), (_, l, False)] -> return (l, r)
     x -> error $ "x was unexpected: " ++ show (x, g)
 
-getL :: Node ->  BDDStateT Node
+getL :: Node ->  BDDState Node
 getL n = fst <$> getSons n
-getR :: Node ->  BDDStateT Node
+getR :: Node ->  BDDState Node
 getR n = snd <$> getSons n
 
-newParent :: V -> (Node, Node) -> BDDStateT BDD
+newParent :: V -> (Node, Node) -> BDDState BDD
 newParent n (l, r) = do
   n' <- dupNode n
   modifyG $ insEdges [(n', l, False), (n', r, True)]
   return $ B n'
 
 -- | Exported function
-negateBDD :: BDD -> BDDStateT BDD
+negateBDD :: BDD -> BDDState BDD
 negateBDD (B 0) = return $ B 1
 negateBDD (B 1) = return $ B 0
 negateBDD (B n) = do
@@ -142,7 +142,7 @@ negateBDD (B n) = do
   B r' <- negateBDD $ B r
   newParent (V v Nothing) (l', r')
 
-bddPurge :: BDD -> BDDStateT ()
+bddPurge :: BDD -> BDDState ()
 bddPurge (B 0) = return ()
 bddPurge (B 1) = return ()
 bddPurge (B n) = do
@@ -154,13 +154,13 @@ bddPurge (B n) = do
     bddPurge' (B r)
 
 
-bddPurge' :: BDD -> BDDStateT ()
+bddPurge' :: BDD -> BDDState ()
 bddPurge' (B n) = do
   r <- reprM n
   unless (isJust r) $ bddPurge (B n)
 
 
-bddAndMany :: Maybe Node -> [BDD] -> BDDStateT BDD
+bddAndMany :: Maybe Node -> [BDD] -> BDDState BDD
 bddAndMany n [] = error $ "cannot conjoin nothing"
 bddAndMany n [a, b] = bddAnd n a b
 bddAndMany n (a:os) = do
@@ -168,13 +168,13 @@ bddAndMany n (a:os) = do
   bddAnd n a r
 
 
-bddAndRepr :: Node -> BDD -> BDD ->  BDDStateT BDD
+bddAndRepr :: Node -> BDD -> BDD ->  BDDState BDD
 bddAndRepr n b1 b2 = do
   g <- getG
   tell ["// bddAndRepr - before " ++ show (n, b1, b2) ++ "\n" ++ showBDD g ++ "\n" ]
   bddAnd (Just n) b1 b2
 
-bddAnd :: Maybe Node -> BDD -> BDD -> BDDStateT BDD
+bddAnd :: Maybe Node -> BDD -> BDD -> BDDState BDD
 
 bddAnd Nothing (B 0) _ =
   return $ B 0
@@ -218,7 +218,7 @@ bddAnd repr (B n1) (B n2) = do
 setSons n z o =
   modifyG $ insEdges [(n, z, False), (n, o, True)]
 
-reduce1 :: BDD -> BDDStateT ()
+reduce1 :: BDD -> BDDState ()
 reduce1 (B 0) = return ()
 reduce1 (B 1) = return ()
 reduce1 (B n) = do
@@ -230,7 +230,7 @@ reduce1 (B n) = do
     (z', o') <- getSons z
     setSons n z' o'
 
-reduce2 :: (BDD, BDD) -> BDDStateT ()
+reduce2 :: (BDD, BDD) -> BDDState ()
 reduce2 (B 0, _) =  return ()
 reduce2 (_, B 0) = return ()
 reduce2 (B 1, _) = return ()
@@ -248,26 +248,26 @@ reduce2 (B n1, B n2) = do
     equate (owner g n1) (owner g n2)
 
 
-moveParents' :: Node -> Node -> BDDStateT ()
+moveParents' :: Node -> Node -> BDDState ()
 moveParents' n1 n2 = do
   ps_n1 <- flip inn n1 <$> getG
   modifyG $ delEdges [(o, d) | (o, d, _) <- ps_n1]
   modifyG $ insEdges [(o, n2, v) | (o,_,v) <- ps_n1]
 
 
-reprM :: Node -> BDDStateT (Maybe Node)
+reprM :: Node -> BDDState (Maybe Node)
 reprM n = do
   g <- getG
   let Just v = lab g n
   return $ repr v
 
 
-moveParents :: Node -> Node -> BDDStateT ()
+moveParents :: Node -> Node -> BDDState ()
 moveParents n1 n2 = do
   r <- reprM n1
   maybe (moveParents' n1 n2) (\_ -> moveParents' n2 n1) r
 
-reduceLayer :: [Node] -> BDDStateT ()
+reduceLayer :: [Node] -> BDDState ()
 reduceLayer ls = do
   mapM_ (reduce1 . B) ls
   mapM_ reduce2 [(B a, B b) | a <- ls, b <- ls, a < b]
@@ -283,7 +283,7 @@ layers g = map (map fst) $ groupBy (\a b -> ginput a == ginput b) ns
         f a b = ginput a `compare` ginput b
 
 
-reduceAll :: BDDStateT ()
+reduceAll :: BDDState ()
 reduceAll = do
   g <- getG
   mapM_ reduceLayer $ layers g
