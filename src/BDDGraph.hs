@@ -9,6 +9,7 @@ import Data.Graph.Inductive.Dot
 import Control.Monad.State
 import Data.Ord
 import Data.List
+import Data.Maybe
 
 newtype BDD = B Int
   deriving (Eq, Ord, Show)
@@ -19,7 +20,7 @@ data V =  V { input :: Node
 
 type T = Gr V Bool
 
-labelN (n, v) = [("label", label)] ++ maybe [] (\_ -> [("shape","rectangle")]) (repr v)
+labelN (n, v) = [("label", label)] ++ maybe [] (const [("shape","rectangle")]) (repr v)
   where label = show n ++ "," ++ show (input v) ++ "," ++ r
         r = maybe "" show (repr v)
 
@@ -140,6 +141,31 @@ negateBDD (B n) = do
   B l' <- negateBDD $ B l
   B r' <- negateBDD $ B r
   newParent (V v Nothing) (l', r')
+
+bddPurge :: BDD -> BDDStateT ()
+bddPurge (B 0) = return ()
+bddPurge (B 1) = return ()
+bddPurge (B n) = do
+  ps <- flip inn n <$> getG
+  when (null ps) $ do
+    (l, r) <- getSons n
+    modifyG $ delNode n
+    bddPurge' (B l)
+    bddPurge' (B r)
+
+
+bddPurge' :: BDD -> BDDStateT ()
+bddPurge' (B n) = do
+  r <- reprM n
+  unless (isJust r) $ bddPurge (B n)
+
+
+bddAndMany :: Maybe Node -> [BDD] -> BDDStateT BDD
+bddAndMany n [] = error $ "cannot conjoin nothing"
+bddAndMany n [a, b] = bddAnd n a b
+bddAndMany n (a:os) = do
+  r <- bddAndMany Nothing os
+  bddAnd n a r
 
 
 bddAndRepr :: Node -> BDD -> BDD ->  BDDStateT BDD

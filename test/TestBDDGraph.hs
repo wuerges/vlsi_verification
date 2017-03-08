@@ -15,8 +15,9 @@ initials_3_4_5_dups = runBDDStateT [3,4,5] $ do
 bddSpace = runBDDStateT [3,4,5] $ do
   b1 <- bddAndRepr 6 (B 3) (B 4)
   b2 <- bddAndRepr 7 (B 4) (B 5)
-  bddAndRepr 8 b1 (B 5)
-  bddAndRepr 9 (B 3) b2
+  --bddAndRepr 8 b1 (B 5)
+  bddAndMany (Just 9) [b2, B 3]
+  bddAndMany (Just 8) [b1, B 5]
   reduceAll
 
 simpleDup =  runBDDStateT [3] $ do
