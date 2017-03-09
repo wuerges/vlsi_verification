@@ -25,7 +25,6 @@ labelN (n, v) = [("label", label)] ++ maybe [] (const [("shape","rectangle")]) (
         r = maybe "" show (repr v)
 
 -- | Converts a graph to a GraphViz format
-showBDD :: T -> String
 showBDD g = showDot $ do
   --fglToDot $ gmap (\(is, n, v, os) -> ([], n, (n, input v, repr v), [])) g
   forM_ (labNodes g) $ \(n, v) -> userNode (userNodeId n)  (labelN (n, v))
@@ -123,6 +122,7 @@ getSons n = do
     [(_, l, False), (_, r, True)] -> return (l, r)
     [(_, r, True), (_, l, False)] -> return (l, r)
     x -> do tell [ "// getSons: x was unexpected: " ++ show (n, x) ++ "\n" ++ showBDD g ++ "\n"]
+            error ("// getSons: x was unexpected: " ++ show (n, x) ++ "\n" ++ showBDD g ++ "\n")
             return (0, 0)
 
 getL :: Node ->  BDDState Node
@@ -152,7 +152,7 @@ bddPurge (B 0) = return ()
 bddPurge (B 1) = return ()
 bddPurge (B n) = do
   ps <- flip inn n <$> getG
-  when (null ps) $ do
+  unless (null ps) $ do
     (l, r) <- getSons n
     modifyG $ delNode n
     bddPurge' (B l)
@@ -258,11 +258,12 @@ reduce2 (B 1, _) = return ()
 reduce2 (_, B 1) = return ()
 
 reduce2 (B n1, B n2) = do
-  (z1, o1) <- getSons n1
-  (z2, o2) <- getSons n2
-  when (z1 == z2 && o1 == o2) $ do
-    g0 <- getG
-    moveParents n1 n2
+  g0 <- getG
+  when (gelem n1 g0 && gelem n2 g0) $ do
+    (z1, o1) <- getSons n1
+    (z2, o2) <- getSons n2
+    when (z1 == z2 && o1 == o2) $ do
+      moveParents n1 n2
     --tell ["// reduce2 - before " ++ show (n1, n2) ++ "\n" ++ showBDD g0 ++ "\n" ]
     --tell ["// reduce2 - after " ++ show (n1, n2) ++ "\n" ++ showBDD g ++ "\n" ]
 
@@ -274,6 +275,7 @@ moveParents' n1 n2 = do
   ps_n1 <- flip inn n1 <$> getG
   modifyG $ delEdges [(o, d) | (o, d, _) <- ps_n1]
   modifyG $ insEdges [(o, n2, v) | (o,_,v) <- ps_n1]
+  bddPurge (B n1)
 
 
 reprM :: Node -> BDDState (Maybe Node)
@@ -315,5 +317,5 @@ reduceAll :: BDDState ()
 reduceAll = do
   g <- getG
   mapM_ reduceLayer $ layers g
-  --mapM_ bddPurge' (map B (nodes g))
+  -- mapM_ bddPurge' (map B (nodes g))
 
