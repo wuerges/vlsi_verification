@@ -40,6 +40,12 @@ type Ctx = Context V Bool
 --type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
 type BDDState = WriterT [String] (State (T, [(Node,Node)]))
 
+logBDD :: String -> BDDState ()
+logBDD c = do
+  g <- getG
+  tell ["// " ++ c ++ "\n" ++ showBDD g ++ "\n" ]
+
+
 startingG = mkGraph [(0,V (-1) (Just 0)), (1, V (-1) (Just 1))] [] :: T
 
  {- For a StateT with a writer
@@ -74,12 +80,10 @@ modifyG f = do
   (g, m) <- get
   put (f g, m)
 
-equate :: Maybe Node -> Maybe Node -> BDDState ()
+equate :: Node -> Node -> BDDState ()
 equate n1 n2 = do
   (g, m) <- get
-  case (n1, n2) of
-    (Just j1, Just j2) -> put (g, (j1, j2):m)
-    _ -> return ()
+  put (g, (n1, n2):m)
 
 cashOut :: BDDState [(Node, Node)]
 cashOut = do
@@ -118,7 +122,7 @@ getSons n = do
   case es of
     [(_, l, False), (_, r, True)] -> return (l, r)
     [(_, r, True), (_, l, False)] -> return (l, r)
-    x -> do --tell [ "// x was unexpected: " ++ show x ++ "\n" ++ showBDD g ++ "\n"]
+    x -> do tell [ "// getSons: x was unexpected: " ++ show (n, x) ++ "\n" ++ showBDD g ++ "\n"]
             return (0, 0)
 
 getL :: Node ->  BDDState Node
@@ -182,7 +186,7 @@ bddAnd Nothing (B 0) _ =
   return $ B 0
 
 bddAnd (Just x) (B 0) _ = do
-  equate (Just 0) (Just x)
+  equate 0 x
   return $ B 0
 
 bddAnd repr _ (B 0) = bddAnd repr (B 0) undefined
@@ -227,10 +231,25 @@ reduce1 (B n) = do
   (z, o) <- getSons n
   when (z == o) $ do
     modifyG $ delEdges [(n,z), (n,o)]
-    g <- getG
-    equate (owner g z) (owner g n)
-    (z', o') <- getSons z
-    setSons n z' o'
+    mergeNodes1 n z
+
+mergeNodes1 :: Node -> Node -> BDDState()
+mergeNodes1 top bot = do
+  g <- getG
+  let (Just (is_top, _, V _   r_top, os_top), g') = match top g
+      (Just (is_bot, _, V inp r_bot, os_bot), g'') = match bot g'
+      (node_keep, r_keep) =
+        case (r_top, r_bot) of
+          (Nothing, _)     -> (bot, r_bot)
+          (Just a, Just b) -> if a < b then (top, r_top)
+                                       else (bot, r_bot)
+      g''' = (is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & g''
+
+  case (r_top, r_bot) of
+    (Just a, Just b) -> equate a b
+    _ -> return ()
+  modifyG $ const g'''
+
 
 reduce2 :: (BDD, BDD) -> BDDState ()
 reduce2 (B 0, _) =  return ()
@@ -244,12 +263,12 @@ reduce2 (B n1, B n2) = do
   when (z1 == z2 && o1 == o2) $ do
     g0 <- getG
     moveParents n1 n2
-    g <- getG
     --tell ["// reduce2 - before " ++ show (n1, n2) ++ "\n" ++ showBDD g0 ++ "\n" ]
     --tell ["// reduce2 - after " ++ show (n1, n2) ++ "\n" ++ showBDD g ++ "\n" ]
-    equate (owner g n1) (owner g n2)
 
 
+-- | moveParents' removes the parents of the first
+-- node n1 and adds it to n2.
 moveParents' :: Node -> Node -> BDDState ()
 moveParents' n1 n2 = do
   ps_n1 <- flip inn n1 <$> getG
@@ -266,8 +285,15 @@ reprM n = do
 
 moveParents :: Node -> Node -> BDDState ()
 moveParents n1 n2 = do
-  r <- reprM n1
-  maybe (moveParents' n1 n2) (\_ -> moveParents' n2 n1) r
+  r1 <- reprM n1
+  r2 <- reprM n2
+  case (r1, r2) of
+    (Nothing, _) -> moveParents' n1 n2
+    (Just _, Nothing) -> moveParents' n2 n1
+    (Just a, Just b) -> do
+      equate a b
+      if a < b then moveParents' n2 n1
+               else moveParents' n1 n2
 
 reduceLayer :: [Node] -> BDDState ()
 reduceLayer ls = do

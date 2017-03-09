@@ -5,7 +5,7 @@ import Verilog
 import Equivalence
 import Graph
 import BDDGraph (BDD(B), BDDState, runBDDState, negateBDD, initialBDD, cashOut,
-                bddZero, bddOne, bddAndMany, reduceAll, bddPurge)
+                bddZero, bddOne, bddAndMany, reduceAll, bddPurge, logBDD)
 --Graph (BDD, initialBDD, negateBDD, bddOne, bddAnd)
 --import BDD
 
@@ -83,20 +83,21 @@ getG = do
 -- | The left one is removed and the right one is mantained
 -- | All the sucessors are moved to the node that remains.
 mergeNodes :: (Node, Node) -> KS ()
-mergeNodes (c1, c2) = do
+mergeNodes (n1, n2) = do
   (g, m1, m2) <- get
-  let es = out g c1 -- getting the edges of n2
+  let [c1, c2] = sort [n1, n2]
+      es = out g c2 -- getting the edges of n2
       des = [(o, d) | (o, d, l) <- es] -- preparing to remove the edges from n2
-      es' = [(c2, d, l) | (o, d, l) <- es] --preparing to add the edgesg to n1
+      es' = [(c1, d, l) | (o, d, l) <- es] --preparing to add the edges to n1
       g' = insEdges es' $ delEdges des g
 
   put (g', m1, m2)
-  purgeNode c1
-  --g'' <- getG
-  --lift $ tell [(g, "before merge of " ++ show (n1,n2))]
-  --lift $ tell [(g', "after the merge of " ++ show (n1,n2))]
-  --lift $ tell [(g'', "after the purge of " ++ show n2)]
-  --return $ n1
+  purgeNode c2
+  g'' <- getG
+  lift $ tell [("// before merge " ++ show (c1, c2) ++ "\n" ++ showGraph g ++ "\n")]
+  lift $ tell [("// after merge " ++ show (c1, c2) ++ "\n" ++ showGraph g' ++ "\n")]
+  lift $ tell [("// after purge " ++ show c2 ++ "\n" ++ showGraph g'' ++ "\n")]
+  --liftX $ logBDD ("after purge of " ++ show c2)
 
 
 isWire n g = case l of
@@ -107,9 +108,9 @@ isWire n g = case l of
 
 purgeNode :: Node -> KS ()
 purgeNode n = do
-  liftX $ bddPurge (B n)
   g <- getG
   when (gelem n g && isWire n g && outdeg g n == 0) $ do
+    liftX $ bddPurge (B n)
     putG (delNode n g)
     mapM_ purgeNode [o | (o, _, _) <- inn g n]
 

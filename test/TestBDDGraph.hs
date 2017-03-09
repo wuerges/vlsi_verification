@@ -12,6 +12,9 @@ initials_3_4_5_dups = runBDDState [3,4,5] $ do
   dupNode (V 4 (Just 11))
   dupNode (V 5 (Just 12))
 
+initial_3 = runBDDState [2] $
+  bddAndMany (Just 10) [B 2]
+
 bddSpace = runBDDState [3,4,5] $ do
   b1 <- bddAndRepr 6 (B 3) (B 4)
   b2 <- bddAndRepr 7 (B 4) (B 5)
@@ -26,7 +29,7 @@ simpleDup =  runBDDState [3] $ do
   reduceAll
 
 equate_4_5 = runBDDState [3] $ do
-  equate (Just 4) (Just 5)
+  equate 4 5
 
 
 
@@ -74,6 +77,14 @@ t6 = TestCase $ do
       ls = layers g
   assertEqual "layers_3_4_5" 4 (length ls)
 
+t7 =
+  let g = getGM $ initial_3
+      ls = layers g
+   in TestCase $ do
+     putStrLn $ "\nG: -> " ++ showBDD g
+     assertEqual "layers_3" 2 (length ls)
+
+
 main = do
-  r <- runTestTT $ TestList [t1, t2, t3, t4, t5, t6]
+  r <- runTestTT $ TestList [t1, t2, t3, t4, t5, t6, t7]
   print r

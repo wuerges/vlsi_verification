@@ -17,7 +17,7 @@ doMain f1 f2 =  do
 
 
 outputResult (e, rs) = do
-  -- mapM_ outputResult' $ zip [1..] rs
+  mapM_ outputResult' $ zip [1..] rs
   case e of
     Left m -> error $ "could not check if equivalent or not"
     Right r -> putStrLn $ "Result: " ++ show r
