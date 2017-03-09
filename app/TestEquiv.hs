@@ -17,13 +17,13 @@ doMain f1 f2 =  do
 
 
 outputResult (e, rs) = do
-  mapM_ outputResult' $ zip [1..] rs
+  -- mapM_ outputResult' $ zip [1..] rs
   case e of
     Left m -> error $ "could not check if equivalent or not"
     Right r -> putStrLn $ "Result: " ++ show r
 
 outputResult' :: (Int, String) -> IO()
 outputResult' (n, comment) = do
-  writeFile (printf "debug_graph_%03d.dot" n)
+  writeFile (printf "debug_graph_%05d.dot" n)
     comment
 

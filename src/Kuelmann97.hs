@@ -4,8 +4,8 @@ module Kuelmann97 where
 import Verilog
 import Equivalence
 import Graph
-import BDDGraph (BDD, BDDState, runBDDState, negateBDD, initialBDD, cashOut,
-                bddZero, bddOne, bddAndMany, reduceAll)
+import BDDGraph (BDD(B), BDDState, runBDDState, negateBDD, initialBDD, cashOut,
+                bddZero, bddOne, bddAndMany, reduceAll, bddPurge)
 --Graph (BDD, initialBDD, negateBDD, bddOne, bddAnd)
 --import BDD
 
@@ -80,25 +80,23 @@ getG = do
 
 
 -- | Merges 2 nodes in the graph.
--- | The smallest one is mantained, the other one is removed.
+-- | The left one is removed and the right one is mantained
 -- | All the sucessors are moved to the node that remains.
--- | Return the node that remains.
-mergeNodes :: Node -> Node -> KS Node
-mergeNodes c1 c2 = do
+mergeNodes :: (Node, Node) -> KS ()
+mergeNodes (c1, c2) = do
   (g, m1, m2) <- get
-  let [n1, n2] = sort [c1, c2] -- n1 is the smallest.
-      es = out g n2 -- getting the edges of n2
+  let es = out g c1 -- getting the edges of n2
       des = [(o, d) | (o, d, l) <- es] -- preparing to remove the edges from n2
-      es' = [(n1, d, l) | (o, d, l) <- es] --preparing to add the edgesg to n1
+      es' = [(c2, d, l) | (o, d, l) <- es] --preparing to add the edgesg to n1
       g' = insEdges es' $ delEdges des g
 
   put (g', m1, m2)
-  purgeNode n2
-  g'' <- getG
+  purgeNode c1
+  --g'' <- getG
   --lift $ tell [(g, "before merge of " ++ show (n1,n2))]
   --lift $ tell [(g', "after the merge of " ++ show (n1,n2))]
   --lift $ tell [(g'', "after the purge of " ++ show n2)]
-  return $ n1
+  --return $ n1
 
 
 isWire n g = case l of
@@ -109,6 +107,7 @@ isWire n g = case l of
 
 purgeNode :: Node -> KS ()
 purgeNode n = do
+  liftX $ bddPurge (B n)
   g <- getG
   when (gelem n g && isWire n g && outdeg g n == 0) $ do
     putG (delNode n g)
@@ -147,8 +146,9 @@ kuelmannNode n1 =
                    lift $ storeBDD bdd n1
 
     cash <- liftX $ reduceAll >> cashOut
+    mapM_ mergeNodes cash
     -- TODO merge Nodes
-    trace ("Cash Out: " ++ show cash) $ return ()
+    trace ("Current Node: " ++ show n1 ++ "/" ++ show (size g) ++ " Cash Out: " ++ show cash) $ return ()
 
   {-
 kuelmannNode :: Node -> KS ()

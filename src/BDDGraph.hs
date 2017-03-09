@@ -118,7 +118,8 @@ getSons n = do
   case es of
     [(_, l, False), (_, r, True)] -> return (l, r)
     [(_, r, True), (_, l, False)] -> return (l, r)
-    x -> error $ "x was unexpected: \n x -> " ++ show x ++ "\n" ++ showBDD g
+    x -> do --tell [ "// x was unexpected: " ++ show x ++ "\n" ++ showBDD g ++ "\n"]
+            return (0, 0)
 
 getL :: Node ->  BDDState Node
 getL n = fst <$> getSons n
@@ -172,7 +173,7 @@ bddAndMany n (a:os) = do
 bddAndRepr :: Node -> BDD -> BDD ->  BDDState BDD
 bddAndRepr n b1 b2 = do
   g <- getG
-  tell ["// bddAndRepr - before " ++ show (n, b1, b2) ++ "\n" ++ showBDD g ++ "\n" ]
+  --tell ["// bddAndRepr - before " ++ show (n, b1, b2) ++ "\n" ++ showBDD g ++ "\n" ]
   bddAnd (Just n) b1 b2
 
 bddAnd :: Maybe Node -> BDD -> BDD -> BDDState BDD
@@ -244,8 +245,8 @@ reduce2 (B n1, B n2) = do
     g0 <- getG
     moveParents n1 n2
     g <- getG
-    tell ["// reduce2 - before " ++ show (n1, n2) ++ "\n" ++ showBDD g0 ++ "\n" ]
-    tell ["// reduce2 - after " ++ show (n1, n2) ++ "\n" ++ showBDD g ++ "\n" ]
+    --tell ["// reduce2 - before " ++ show (n1, n2) ++ "\n" ++ showBDD g0 ++ "\n" ]
+    --tell ["// reduce2 - after " ++ show (n1, n2) ++ "\n" ++ showBDD g ++ "\n" ]
     equate (owner g n1) (owner g n2)
 
 
@@ -288,4 +289,5 @@ reduceAll :: BDDState ()
 reduceAll = do
   g <- getG
   mapM_ reduceLayer $ layers g
+  --mapM_ bddPurge' (map B (nodes g))
 
