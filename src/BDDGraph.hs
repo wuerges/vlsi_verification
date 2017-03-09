@@ -117,8 +117,8 @@ getSons n = do
   g <- getG
   case es of
     [(_, l, False), (_, r, True)] -> return (l, r)
-    [(_, r, False), (_, l, False)] -> return (l, r)
-    x -> error $ "x was unexpected: " ++ show (x, g)
+    [(_, r, True), (_, l, False)] -> return (l, r)
+    x -> error $ "x was unexpected: \n x -> " ++ show x ++ "\n" ++ showBDD g
 
 getL :: Node ->  BDDState Node
 getL n = fst <$> getSons n
@@ -162,6 +162,7 @@ bddPurge' (B n) = do
 
 bddAndMany :: Maybe Node -> [BDD] -> BDDState BDD
 bddAndMany n [] = error $ "cannot conjoin nothing"
+bddAndMany n [b] = bddAnd n (B 1) b
 bddAndMany n [a, b] = bddAnd n a b
 bddAndMany n (a:os) = do
   r <- bddAndMany Nothing os

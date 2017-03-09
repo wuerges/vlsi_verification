@@ -4,13 +4,16 @@ module Kuelmann97 where
 import Verilog
 import Equivalence
 import Graph
-import BDDGraph (BDDState, runBDDState) --Graph (BDD, initialBDD, negateBDD, bddOne, bddAnd)
-import BDD
+import BDDGraph (BDD, BDDState, runBDDState, negateBDD, initialBDD, cashOut,
+                bddZero, bddOne, bddAndMany, reduceAll)
+--Graph (BDD, initialBDD, negateBDD, bddOne, bddAnd)
+--import BDD
 
 import Control.Monad.State
 import Control.Monad.Writer
-import Control.Monad.Trans.Class
 import Data.Maybe
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.Maybe
 
 import Data.List hiding (union)
 import Data.Graph.Inductive
@@ -25,6 +28,12 @@ import qualified Data.Set as S
 --type KS a = WriterT [Log] (State (G, M.Map BDD Node, M.Map Node BDD)) a
 type KS = WriterT [String] (StateT (G, M.Map BDD Node, M.Map Node BDD) BDDState)
 
+liftX :: BDDState a -> KS a
+liftX = lift . lift
+
+liftY :: BDDState a -> MaybeT KS a
+liftY = lift . liftX
+
 getNodeBddM :: KS (M.Map Node BDD)
 getNodeBddM = do
   (_, _, m) <- get
@@ -35,15 +44,29 @@ getBddNodeM = do
   (_, m, _) <- get
   return m
 
-getBDD :: Node -> KS (Maybe BDD)
+getBDD :: Node -> MaybeT KS BDD
 getBDD n = do
-  M.lookup n <$> getNodeBddM
+  MaybeT $ M.lookup n <$> getNodeBddM
 
-getBDDfromEdge :: LEdge Bool -> KS (Maybe BDD)
-getBDDfromEdge (o, _, v) = do
-  bdd <- getBDD o
-  if v then return bdd
-       else return $ negateBDD <$> bdd
+
+--getBDDfromEdge :: LEdge Bool -> MaybeT KS BDD
+getBDDfromEdge :: LEdge Bool -> MaybeT KS BDD
+getBDDfromEdge (o, _, v) =
+  do bdd <- getBDD o
+     if v then return bdd
+          else liftY $ negateBDD bdd
+
+  --Just bdd <- getBDD o
+  --liftX $ negateBDD bdd
+  --bdd <- runMaybeT $ getBDD o
+  --return bdd
+  --negateBDD bdd
+  {-case mbdd of
+    Nothing -> return Nothing
+    Just bdd -> if v then return $ Just bdd
+                     else return $ Just bdd -}
+                       --do negBdd <- lift $ negateBDD bdd
+                             --return Just negBdd
 
 putG :: G -> KS ()
 putG g = do
@@ -116,7 +139,18 @@ deleteBDD n = do
   (g, m1, m2) <- get
   put (g, m1, M.delete n m2)
 
+kuelmannNode :: Node -> KS ()
+kuelmannNode n1 =
+  do
+    (g, m1, m2) <- get
+    runMaybeT $ do bdd <- calcBDDNode n1
+                   lift $ storeBDD bdd n1
 
+    cash <- liftX $ reduceAll >> cashOut
+    -- TODO merge Nodes
+    trace ("Cash Out: " ++ show cash) $ return ()
+
+  {-
 kuelmannNode :: Node -> KS ()
 kuelmannNode n1 =
   do (g, m1, m2) <- get
@@ -129,28 +163,31 @@ kuelmannNode n1 =
                        --lift $ tell $ [(g, "BDDs match: "++ show (n1, n2) ++ " -> "++ show bdd)]
                        nr <- mergeNodes n1 n2
                        storeBDD bdd nr
-
+-}
+{-
 calcBDDNode' n = do
   mbdd <- calcBDDNode n
   case mbdd of
     Nothing -> return ()
     Just bdd -> storeBDD bdd n
   return mbdd
+-}
 
-calcBDDNode :: Node -> KS (Maybe BDD)
+calcBDDNode :: Node -> MaybeT KS BDD
 calcBDDNode n = do
-  g <- getG
+  g <- lift getG
   if indeg g n == 0
-     then return $ Just $ case val g n of
-                            Input _ -> initialBDD n
-                            Wire _ -> error "should not be empty"
-                            Output _ -> error "should not be empty"
-                            ValZero -> bddZero
-                            ValOne -> bddOne
+     then case val g n of
+            Wire _ -> error "should not be empty"
+            Output _ -> error "should not be empty"
+            ValZero -> return bddZero
+            ValOne -> return bddOne
+            Input _ -> liftY $ initialBDD n
 
      else do
-       is <- mapM getBDDfromEdge (inn g n)
-       return $ foldr bddAnd bddOne <$> sequence is
+       let inp_edges = (inn g n)
+       is <- mapM getBDDfromEdge inp_edges
+       liftY $ bddAndMany (Just n) is
 
 
 runKS :: [Node] -> G -> KS a -> (a, [String])
