@@ -268,7 +268,7 @@ mergeNodes1 top bot = do
   g <- getG
   let (Just (is_top, _, V _   r_top, _), g') = match top g
       (Just (is_bot, _, V inp r_bot, os_bot), g'') = match bot g'
-      g''' = (is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & g''
+      g''' = (rmdups $ is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & g'' -- TODO must pay more attention here in the future
       node_keep = min top bot
       r_keep = r_top || r_bot
 
@@ -303,12 +303,14 @@ moveParents' n1 n2 = do
   bddPurge (B n1)
 -}
 
+rmdups = map head . group . sort
+
 moveParents :: Node -> Node -> BDDState ()
 moveParents n1 n2 = do
   g <- getG
   let (Just (is_n1, _, V inp r_n1, os_n1), g') = match n1 g
       (Just (is_n2, _, V _   r_n2, _    ), g'') = match n2 g'
-      g''' = (is_n1 ++ is_n2, min n1 n2, V inp (r_n1 || r_n2), os_n1) & g''
+      g''' = (rmdups $ is_n1 ++ is_n2, min n1 n2, V inp (r_n1 || r_n2), os_n1) & g''
 
   when (r_n1 && r_n2) $ equate n1 n2
   modifyG $ const g'''
