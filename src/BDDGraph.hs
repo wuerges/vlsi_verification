@@ -144,16 +144,15 @@ dupNode repr orig  = do
   -}
 
 
+getSonsG :: T -> Node -> (Node, Node)
+getSonsG g n = case out g n of
+                 [(_, l, False), (_, r, True)] -> (l, r)
+                 [(_, r, True), (_, l, False)] -> (l, r)
+                 x -> error ("// getSons: x was unexpected: " ++ show (n, x) ++ "\n" ++ showBDD g ++ "\n")
+
+
 getSons :: Node -> BDDState (Node, Node)
-getSons n = do
-  es <- flip out n <$> getG
-  g <- getG
-  case es of
-    [(_, l, False), (_, r, True)] -> return (l, r)
-    [(_, r, True), (_, l, False)] -> return (l, r)
-    x -> do -- tell [ "// getSons: x was unexpected: " ++ show (n, x) ++ "\n" ++ showBDD g ++ "\n"]
-            error ("// getSons: x was unexpected: " ++ show (n, x) ++ "\n" ++ showBDD g ++ "\n")
-            --return (0, 0)
+getSons n = flip getSonsG n <$> getG
 
 getL :: Node ->  BDDState Node
 getL n = fst <$> getSons n
@@ -276,6 +275,8 @@ mergeNodes1 top bot = do
   modifyG $ const g'''
 
 
+reduce2' b1 b2 = reduce2 (b1, b2)
+
 reduce2 :: (BDD, BDD) -> BDDState ()
 reduce2 (B 0, _) =  return ()
 reduce2 (_, B 0) = return ()
@@ -315,29 +316,49 @@ moveParents n1 n2 = do
   when (r_n1 && r_n2) $ equate n1 n2
   modifyG $ const g'''
 
+sortAndGroupBy p = groupBy (equating p) . sortBy (comparing p)
+  where equating p x y = (p x) == (p y)
+
+groupWithSons g = map (map fst) . sortAndGroupBy snd . map (\n -> (n, getSonsG g n)) . filter (flip gelem g)
+
+reduceGroup :: [BDD] -> BDDState ()
+reduceGroup [] = return ()
+reduceGroup [_] = return ()
+reduceGroup (x:xs) = do
+  mapM_ (reduce2' x) xs
+
 reduceLayer :: [Node] -> BDDState ()
 reduceLayer ls = do
   mapM_ (reduce1 . B) ls
-  mapM_ reduce2 [(B a, B b) | a <- ls, b <- ls, a < b]
-
+  g <- getG
+  mapM_ (reduceGroup . map B) $ groupWithSons g ls
+  --mapM_ reduce2 [(B a, B b) | a <- ls, b <- ls, a < b]
 
 
 ginput :: (Node, V) -> Node
 ginput (_,v) = input v
 
 layers :: T -> [[Node]]
-layers gr = map (map fst) $ groupBy g $ sortBy f ns'
+layers = map (map fst) . sortAndGroupBy ginput . filter (\x -> ginput x > 0) . labNodes
+  {-
   where ns :: [(Node, V)]
         ns = labNodes gr
         ns' = filter t ns
         f a b = ginput a `compare` ginput b
         g a b = ginput a == ginput b
         t a = ginput a > 0
+        -}
 
 
 reduceAll :: BDDState ()
 reduceAll = do
   g <- getG
+    {-
+  traceM $ "Layer: " ++ show (layers g) ++
+    "\nGroups: " ++ show (map (groupWithSons g) (layers g)) ++
+      "\nGraphviz: -> " ++ showBDD g ++
+        "\nGraph: -> " ++ show g
+        -}
   mapM_ reduceLayer $ layers g
   -- mapM_ bddPurge' (map B (nodes g))
 
