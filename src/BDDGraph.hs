@@ -15,14 +15,14 @@ newtype BDD = B Int
   deriving (Eq, Ord, Show)
 
 data V =  V { input :: Node
-            , repr :: Maybe Node }
+            , repr :: Bool }
   deriving Show
 
 type T = Gr V Bool
 
-labelN (n, v) = [("label", label)] ++ maybe [] (const [("shape","rectangle")]) (repr v)
-  where label = show n ++ "," ++ show (input v) ++ "," ++ r
-        r = maybe "" show (repr v)
+labelN (n, v) = [("label", label)] ++ shape
+  where label = show n ++ "," ++ show (input v)
+        shape = if repr v then [("shape","rectangle")] else []
 
 -- | Converts a graph to a GraphViz format
 showBDD g = showDot $ do
@@ -45,7 +45,7 @@ logBDD c = do
   tell ["// " ++ c ++ "\n" ++ showBDD g ++ "\n" ]
 
 
-startingG = mkGraph [(0,V (-1) (Just 0)), (1, V (-1) (Just 1))] [] :: T
+startingG = mkGraph [(0,V (-1) True), (1, V (-1) True)] [] :: T
 
  {- For a StateT with a writer
 --type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
@@ -70,10 +70,6 @@ runBDDState is op = flip runState (startingG, []) $ do
 getG :: BDDState T
 getG = fst <$> get
 
-owner :: T -> Node -> Maybe Node
-owner g n = r
-  where Just (V _ r) = lab g n
-
 modifyG :: (T -> T) -> BDDState ()
 modifyG f = do
   (g, m) <- get
@@ -94,7 +90,7 @@ initialBDD :: Node -> BDDState BDD
 initialBDD n = do
   g <- getG
   unless (gelem n g) $ do
-    modifyG $ insNode (n, V n (Just n))
+    modifyG $ insNode (n, V n True)
     modifyG $ insEdges [(n, 0, False), (n, 1, True)]
   return $ B n
 
@@ -103,16 +99,22 @@ bddOne = B 1
 -- | Exported function
 bddZero = B 0
 
-bval :: Node -> BDDState Node
-bval o = do
+inputNodeM :: Node -> BDDState Node
+inputNodeM o = do
   Just v <- flip lab o <$> getG
   return $ input v
 
-dupNode :: V -> BDDState Node
-dupNode (V v r) = do
-  [n] <- newNodes 1 <$> getG
-  modifyG $ insNode (n, V v r)
-  return n
+dupNode :: Maybe Node -> Node -> BDDState Node
+dupNode repr orig  = do
+  g <- getG
+  v <- inputNodeM orig
+  let (n_id, r) =
+        case repr of
+          Just x -> if (gelem x g) then error $ "Node ID was already in the graph: " ++ show x ++ "\n" ++ showBDD g
+                                   else (x, True)
+          Nothing -> (head $ newNodes 1 g, False)
+  modifyG $ insNode (n_id, V v r)
+  return n_id
 
 getSons :: Node -> BDDState (Node, Node)
 getSons n = do
@@ -130,9 +132,9 @@ getL n = fst <$> getSons n
 getR :: Node ->  BDDState Node
 getR n = snd <$> getSons n
 
-newParent :: V -> (Node, Node) -> BDDState BDD
-newParent n (l, r) = do
-  n' <- dupNode n
+newParent :: Maybe Node -> Node -> (Node, Node) -> BDDState BDD
+newParent repr orig (l, r) = do
+  n' <- dupNode repr orig
   modifyG $ insEdges [(n', l, False), (n', r, True)]
   return $ B n'
 
@@ -141,11 +143,11 @@ negateBDD :: BDD -> BDDState BDD
 negateBDD (B 0) = return $ B 1
 negateBDD (B 1) = return $ B 0
 negateBDD (B n) = do
-  v <- bval n
+  -- v <- inputNodeM n
   (l, r) <- getSons n
   B l' <- negateBDD $ B l
   B r' <- negateBDD $ B r
-  newParent (V v Nothing) (l', r')
+  newParent Nothing n (l', r')
 
 bddPurge :: BDD -> BDDState ()
 bddPurge (B 0) = return ()
@@ -161,8 +163,9 @@ bddPurge (B n) = do
 
 bddPurge' :: BDD -> BDDState ()
 bddPurge' (B n) = do
-  r <- reprM n
-  unless (isJust r) $ bddPurge (B n)
+  g <- getG
+  let Just (V _ r) = lab g n
+  unless r $ bddPurge (B n)
 
 
 bddAndMany :: Maybe Node -> [BDD] -> BDDState BDD
@@ -176,7 +179,7 @@ bddAndMany n (a:os) = do
 
 bddAndRepr :: Node -> BDD -> BDD ->  BDDState BDD
 bddAndRepr n b1 b2 = do
-  g <- getG
+  --g <- getG
   --tell ["// bddAndRepr - before " ++ show (n, b1, b2) ++ "\n" ++ showBDD g ++ "\n" ]
   bddAnd (Just n) b1 b2
 
@@ -194,16 +197,15 @@ bddAnd repr _ (B 0) = bddAnd repr (B 0) undefined
 bddAnd repr (B 1) (B 1) = return $ B 1
 
 bddAnd repr (B 1) (B b) = do
-  v <- bval b
   (l, r) <- getSons b
-  newParent (V v repr) (l, r)
+  newParent repr b (l, r)
 
 bddAnd repr b (B 1) = bddAnd repr (B 1) b
 
 
 bddAnd repr (B n1) (B n2) = do
-  v_n1 <- bval n1
-  v_n2 <- bval n2
+  v_n1 <- inputNodeM n1
+  v_n2 <- inputNodeM n2
   (z1, o1) <- getSons n1
   (z2, o2) <- getSons n2
 
@@ -211,15 +213,15 @@ bddAnd repr (B n1) (B n2) = do
     GT -> do
       B z <- bddAnd Nothing (B z1) (B n2)
       B o <- bddAnd Nothing (B o1) (B n2)
-      newParent (V v_n1 repr) (z, o)
+      newParent repr n1 (z, o)
     LT -> do
       B z <- bddAnd Nothing (B z2) (B n1)
       B o <- bddAnd Nothing (B o2) (B n1)
-      newParent (V v_n2 repr) (z, o)
+      newParent repr n2 (z, o)
     EQ -> do
       B z <- bddAnd Nothing (B z1) (B z2)
       B o <- bddAnd Nothing (B o1) (B o2)
-      newParent (V v_n1 repr) (z, o)
+      newParent repr n1 (z, o)
 
 setSons n z o =
   modifyG $ insEdges [(n, z, False), (n, o, True)]
@@ -236,18 +238,13 @@ reduce1 (B n) = do
 mergeNodes1 :: Node -> Node -> BDDState()
 mergeNodes1 top bot = do
   g <- getG
-  let (Just (is_top, _, V _   r_top, os_top), g') = match top g
+  let (Just (is_top, _, V _   r_top, _), g') = match top g
       (Just (is_bot, _, V inp r_bot, os_bot), g'') = match bot g'
-      (node_keep, r_keep) =
-        case (r_top, r_bot) of
-          (Nothing, _)     -> (bot, r_bot)
-          (Just a, Just b) -> if a < b then (top, r_top)
-                                       else (bot, r_bot)
       g''' = (is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & g''
+      node_keep = min top bot
+      r_keep = r_top || r_bot
 
-  case (r_top, r_bot) of
-    (Just a, Just b) -> equate a b
-    _ -> return ()
+  when (r_top && r_bot) $ equate top bot
   modifyG $ const g'''
 
 
@@ -267,7 +264,7 @@ reduce2 (B n1, B n2) = do
     --tell ["// reduce2 - before " ++ show (n1, n2) ++ "\n" ++ showBDD g0 ++ "\n" ]
     --tell ["// reduce2 - after " ++ show (n1, n2) ++ "\n" ++ showBDD g ++ "\n" ]
 
-
+{-
 -- | moveParents' removes the parents of the first
 -- node n1 and adds it to n2.
 moveParents' :: Node -> Node -> BDDState ()
@@ -276,26 +273,17 @@ moveParents' n1 n2 = do
   modifyG $ delEdges [(o, d) | (o, d, _) <- ps_n1]
   modifyG $ insEdges [(o, n2, v) | (o,_,v) <- ps_n1]
   bddPurge (B n1)
-
-
-reprM :: Node -> BDDState (Maybe Node)
-reprM n = do
-  g <- getG
-  let Just v = lab g n
-  return $ repr v
-
+-}
 
 moveParents :: Node -> Node -> BDDState ()
 moveParents n1 n2 = do
-  r1 <- reprM n1
-  r2 <- reprM n2
-  case (r1, r2) of
-    (Nothing, _) -> moveParents' n1 n2
-    (Just _, Nothing) -> moveParents' n2 n1
-    (Just a, Just b) -> do
-      equate a b
-      if a < b then moveParents' n2 n1
-               else moveParents' n1 n2
+  g <- getG
+  let (Just (is_n1, _, V inp r_n1, os_n1), g') = match n1 g
+      (Just (is_n2, _, V _   r_n2, _    ), g'') = match n2 g'
+      g''' = (is_n1 ++ is_n2, min n1 n2, V inp (r_n1 || r_n2), os_n1) & g''
+
+  when (r_n1 && r_n2) $ equate n1 n2
+  modifyG $ const g'''
 
 reduceLayer :: [Node] -> BDDState ()
 reduceLayer ls = do

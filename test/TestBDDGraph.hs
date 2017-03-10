@@ -8,24 +8,24 @@ import Text.Printf
 
 initials_3_4_5 = runBDDState [3,4,5] $ return ()
 initials_3_4_5_dups = runBDDState [3,4,5] $ do
-  dupNode (V 3 (Just 10))
-  dupNode (V 4 (Just 11))
-  dupNode (V 5 (Just 12))
+  dupNode (Just 10) 3
+  dupNode (Just 11) 4
+  dupNode (Just 12) 5
 
 initial_3 = runBDDState [2] $
   bddAndMany (Just 10) [B 2]
 
 bddSpace = runBDDState [3,4,5] $ do
-  b1 <- bddAndRepr 6 (B 3) (B 4)
-  b2 <- bddAndRepr 7 (B 4) (B 5)
+  b1 <- bddAndRepr 10 (B 3) (B 4)
+  b2 <- bddAndRepr 20 (B 4) (B 5)
   --bddAndRepr 8 b1 (B 5)
-  bddAndMany (Just 9) [b2, B 3]
-  bddAndMany (Just 8) [b1, B 5]
+  bddAndMany (Just 30) [b2, B 3]
+  bddAndMany (Just 40) [b1, B 5]
   reduceAll
 
 simpleDup =  runBDDState [3] $ do
   (l, r) <- getSons 3
-  newParent (V 3 (Just 4)) (l, r)
+  newParent (Just 10) 3 (l, r)
   reduceAll
 
 equate_4_5 = runBDDState [3] $ do
@@ -51,7 +51,7 @@ t1 = TestCase $ do
   --putStrLn $ "\n=> bddSpaceDup: \n\n" ++ showG bddSpace ++ "\n" ++ show (getEq bddSpace) ++ "\n\n"
   --writeLogs bddSpace
   assertEqual "There must be only one equate" 1 (length $ getEq bddSpace)
-  assertBool "The equate must be either (8,9) or (9,8)" ((elem (8, 9) $ getEq bddSpace) || (elem (9, 8) $ getEq bddSpace))
+  assertBool "The equate must be (30,40)" ((elem (30, 40) $ getEq bddSpace) || (elem (40, 30) $ getEq bddSpace))
 
 t2 = TestCase $
   assertEqual "equate_4_5" (4,5) (head . getEq $ equate_4_5)
@@ -70,7 +70,7 @@ t5 = TestCase $ do
   let g = getGM $ initials_3_4_5_dups
       ls = layers g
   --putStrLn $ "\nG: -> " ++ show g
-  assertEqual "initials_3_4_5" [[0,1],[3, 6], [4, 7], [5, 8]] ls
+  assertEqual "initials_3_4_5" [[0,1],[3, 10], [4, 11], [5, 12]] ls
 
 t6 = TestCase $ do
   let g = getGM $ bddSpace
@@ -81,7 +81,7 @@ t7 =
   let g = getGM $ initial_3
       ls = layers g
    in TestCase $ do
-     putStrLn $ "\nG: -> " ++ showBDD g
+     --putStrLn $ "\nG: -> " ++ showBDD g
      assertEqual "layers_3" 2 (length ls)
 
 
