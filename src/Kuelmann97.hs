@@ -197,18 +197,19 @@ calcBDDNode n = do
        liftY $ bddAndMany (Just n) is
 
 
-runKS :: [Node] -> G -> KS a -> (a, [String])
-runKS is g m = (r, kuelLog ++ bddLog)
+runKS :: [Node] -> [Node] -> G -> KS a -> (a, [String])
+runKS is ns g m = (r, kuelLog ++ bddLog)
   --((a0, [String]), (BDDGraph.T, [(Node, Node)]))
 
  where
-   (((r, kuelLog), bddLog), (bddGraphRes, eqs)) = runBDDState is $ flip evalStateT (g, M.empty, M.empty, 1) (runWriterT m)
+   (((r, kuelLog), bddLog), (bddGraphRes, eqs)) = runBDDState is ns $ flip evalStateT (g, M.empty, M.empty, 1) (runWriterT m)
 
 -- | Checks Equivalence of circuits based on Kuelmann97
 equivKuelmann97_2 :: Verilog -> Verilog -> (Either String Bool, [String])
 equivKuelmann97_2 v1 v2 =
-  runKS inputs g $ do mapM_ kuelmannNode todo
-                      checkResult
+  runKS inputs ns g $ do mapM_ kuelmannNode todo
+                         checkResult
   where g = makeGraphV [v1, v2]
         todo = mybfs g
         inputs = getInputs g
+        ns = nodes g

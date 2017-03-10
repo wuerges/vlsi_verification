@@ -46,10 +46,15 @@ logBDD c = do
 
 startingG = mkGraph [(0,V (-1) True), (1, V (-1) True)] [] :: T
 
+reserveNodes :: [Node] -> BDDState ()
+reserveNodes ns =
+  modifyG $ insNodes $ zip ns (repeat (V (-1) True))
+
  {- For a StateT with a writer
 --type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
   -}
-runBDDState is op = flip runState (startingG, []) $ runWriterT  $ do
+runBDDState is ns op = flip runState (startingG, []) $ runWriterT  $ do
+  reserveNodes ns
   mapM initialBDD is
   op
 
@@ -88,10 +93,16 @@ cashOut = do
 initialBDD :: Node -> BDDState BDD
 initialBDD n = do
   g <- getG
+  let (Just (_, _, v, _), g') = match n g
+      g'' = ([], n, V n True, [(True, 1), (False, 0)]) & g
+  modifyG $ const g''
+  return $ B n
+    {-
   unless (gelem n g) $ do
     modifyG $ insNode (n, V n True)
     modifyG $ insEdges [(n, 0, False), (n, 1, True)]
   return $ B n
+  -}
 
 -- | Exported function
 bddOne = B 1
@@ -106,7 +117,6 @@ inputNodeM o = do
 newNode :: T -> Node
 newNode = head . newNodes 1
 
-
 dupNode :: Maybe Node -> Node -> BDDState Node
 dupNode repr orig  = do
   g <- getG
@@ -117,15 +127,12 @@ dupNode repr orig  = do
       let z = newNode g
       modifyG $ insNode (z, V v0 False)
       return z
-    Just x -> case match x g of
-                (Nothing, _) -> do
-                  modifyG $ insNode (x, V v0 True)
-                  return x
-                (Just (is, _, v, os), g') -> do
-                  let g'' = insNode (x, V v0 True) g'
-                      g''' = (is, newNode g'', v, os) & g''
-                  modifyG $ const g'''
-                  return x
+    Just x -> do
+      --let (_, g') = match x g
+      --    g'' = ([],x, V v0 True, []) & g'
+      --modifyG $ const g''
+      modifyG $ insNode (x, V v0 True)
+      return x
 
 {-
   let (n_id, r) =
@@ -317,9 +324,13 @@ ginput :: (Node, V) -> Node
 ginput (_,v) = input v
 
 layers :: T -> [[Node]]
-layers g = map (map fst) $ groupBy (\a b -> ginput a == ginput b) ns
-  where ns = sortBy f $ labNodes g
+layers gr = map (map fst) $ groupBy g $ sortBy f ns'
+  where ns :: [(Node, V)]
+        ns = labNodes gr
+        ns' = filter t ns
         f a b = ginput a `compare` ginput b
+        g a b = ginput a == ginput b
+        t a = ginput a > 0
 
 
 reduceAll :: BDDState ()
