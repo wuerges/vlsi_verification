@@ -22,6 +22,7 @@ import qualified Data.Map as M
 import qualified Data.IntMap as I
 
 import qualified Data.Set as S
+import Text.Printf
 
 --type KS a = WriterT String (State (G, M.Map BDD Node)) a
 --
@@ -97,13 +98,15 @@ mergeNodes (n1, n2) = do
       g' = insEdges es' $ delEdges des g
 
   putG g'
-  liftX $ logBDD ("// before purge of " ++ show c2)
+  --liftX $ logBDD ("// before purge of " ++ show c2)
   purgeNode c2
+    {-
   g'' <- getG
   lift $ tell [("// before merge " ++ show (c1, c2) ++ "\n" ++ showGraph g ++ "\n")]
   lift $ tell [("// after merge " ++ show (c1, c2) ++ "\n" ++ showGraph g' ++ "\n")]
   lift $ tell [("// after purge " ++ show c2 ++ "\n" ++ showGraph g'' ++ "\n")]
   liftX $ logBDD ("after purge of " ++ show c2)
+  -}
 
 
 isWire n g = case l of
@@ -155,7 +158,7 @@ kuelmannNode n1 =
     cash <- liftX $ reduceAll >> cashOut
     mapM_ mergeNodes cash
     -- TODO merge Nodes
-    trace ("Current Node: " ++ show n1  ++ " -- " ++ show c++ "/" ++ show (size g) ++ " Cash Out: " ++ show cash) $ return ()
+    trace (printf "Current Node: %5d -- %5d/%5d Cash Out %s" n1 c (size g) (show cash)) $ return ()
 
   {-
 kuelmannNode :: Node -> KS ()
