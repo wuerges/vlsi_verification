@@ -146,7 +146,7 @@ getSons n = do
     [(_, r, True), (_, l, False)] -> return (l, r)
     x -> do -- tell [ "// getSons: x was unexpected: " ++ show (n, x) ++ "\n" ++ showBDD g ++ "\n"]
             error ("// getSons: x was unexpected: " ++ show (n, x) ++ "\n" ++ showBDD g ++ "\n")
-            return (0, 0)
+            --return (0, 0)
 
 getL :: Node ->  BDDState Node
 getL n = fst <$> getSons n
@@ -175,7 +175,7 @@ bddPurge (B 0) = return ()
 bddPurge (B 1) = return ()
 bddPurge (B n) = do
   ps <- flip inn n <$> getG
-  unless (null ps) $ do
+  when (null ps) $ do
     (l, r) <- getSons n
     modifyG $ delNode n
     bddPurge' (B l)

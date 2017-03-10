@@ -97,13 +97,13 @@ mergeNodes (n1, n2) = do
       g' = insEdges es' $ delEdges des g
 
   putG g'
-  --liftX $ logBDD ("// before purge of " ++ show c2)
+  liftX $ logBDD ("// before purge of " ++ show c2)
   purgeNode c2
-  --g'' <- getG
-  --lift $ tell [("// before merge " ++ show (c1, c2) ++ "\n" ++ showGraph g ++ "\n")]
-  --lift $ tell [("// after merge " ++ show (c1, c2) ++ "\n" ++ showGraph g' ++ "\n")]
-  --lift $ tell [("// after purge " ++ show c2 ++ "\n" ++ showGraph g'' ++ "\n")]
-  --liftX $ logBDD ("after purge of " ++ show c2)
+  g'' <- getG
+  lift $ tell [("// before merge " ++ show (c1, c2) ++ "\n" ++ showGraph g ++ "\n")]
+  lift $ tell [("// after merge " ++ show (c1, c2) ++ "\n" ++ showGraph g' ++ "\n")]
+  lift $ tell [("// after purge " ++ show c2 ++ "\n" ++ showGraph g'' ++ "\n")]
+  liftX $ logBDD ("after purge of " ++ show c2)
 
 
 isWire n g = case l of
