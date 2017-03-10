@@ -104,17 +104,38 @@ inputNodeM o = do
   Just v <- flip lab o <$> getG
   return $ input v
 
+newNode :: T -> Node
+newNode = head . newNodes 1
+
 dupNode :: Maybe Node -> Node -> BDDState Node
 dupNode repr orig  = do
   g <- getG
-  v <- inputNodeM orig
+  v0 <- inputNodeM orig
+
+  case repr of
+    Nothing -> do
+      let z = newNode g
+      modifyG $ insNode (z, V v0 False)
+      return z
+    Just x -> case match x g of
+                (Nothing, _) -> do
+                  modifyG $ insNode (x, V v0 True)
+                  return x
+                (Just (is, _, v, os), g') -> do
+                  let g'' = insNode (x, V v0 True) g'
+                      g''' = (is, newNode g'', v, os) & g''
+                  modifyG $ const g'''
+                  return x
+
+{-
   let (n_id, r) =
         case repr of
           Just x -> if (gelem x g) then error $ "Node ID was already in the graph: " ++ show x ++ "\n" ++ showBDD g
                                    else (x, True)
           Nothing -> (head $ newNodes 1 g, False)
-  modifyG $ insNode (n_id, V v r)
   return n_id
+  -}
+
 
 getSons :: Node -> BDDState (Node, Node)
 getSons n = do
