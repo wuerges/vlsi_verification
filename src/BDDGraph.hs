@@ -33,7 +33,6 @@ showBDD g = showDot $ do
     \(o, d, t) -> edge (userNodeId o) (userNodeId d) (if t then [] else [("style","dotted")])
   mapM_ (same . map userNodeId) (layers g)
 
-
 type Ctx = Context V Bool
 
 --type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
@@ -107,6 +106,7 @@ inputNodeM o = do
 newNode :: T -> Node
 newNode = head . newNodes 1
 
+
 dupNode :: Maybe Node -> Node -> BDDState Node
 dupNode repr orig  = do
   g <- getG
@@ -144,7 +144,7 @@ getSons n = do
   case es of
     [(_, l, False), (_, r, True)] -> return (l, r)
     [(_, r, True), (_, l, False)] -> return (l, r)
-    x -> do tell [ "// getSons: x was unexpected: " ++ show (n, x) ++ "\n" ++ showBDD g ++ "\n"]
+    x -> do -- tell [ "// getSons: x was unexpected: " ++ show (n, x) ++ "\n" ++ showBDD g ++ "\n"]
             error ("// getSons: x was unexpected: " ++ show (n, x) ++ "\n" ++ showBDD g ++ "\n")
             return (0, 0)
 

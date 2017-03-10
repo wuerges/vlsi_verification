@@ -26,7 +26,7 @@ import qualified Data.Set as S
 --type KS a = WriterT String (State (G, M.Map BDD Node)) a
 --
 --type KS a = WriterT [Log] (State (G, M.Map BDD Node, M.Map Node BDD)) a
-type KS = WriterT [String] (StateT (G, M.Map BDD Node, M.Map Node BDD) BDDState)
+type KS = WriterT [String] (StateT (G, M.Map BDD Node, M.Map Node BDD, Int) BDDState)
 
 liftX :: BDDState a -> KS a
 liftX = lift . lift
@@ -36,13 +36,19 @@ liftY = lift . liftX
 
 getNodeBddM :: KS (M.Map Node BDD)
 getNodeBddM = do
-  (_, _, m) <- get
+  (_, _, m, _) <- get
   return m
 
 getBddNodeM :: KS (M.Map BDD Node)
 getBddNodeM = do
-  (_, m, _) <- get
+  (_, m, _, _) <- get
   return m
+
+getCount :: KS Int
+getCount = do
+  (g, m1, m2, c) <- get
+  put (g, m1, m2, c+1)
+  return c
 
 getBDD :: Node -> MaybeT KS BDD
 getBDD n = do
@@ -70,35 +76,34 @@ getBDDfromEdge (o, _, v) =
 
 putG :: G -> KS ()
 putG g = do
-  (_, x, y) <- get
-  put (g, x, y)
+  (_, x, y, z) <- get
+  put (g, x, y, z)
 
 getG :: KS G
 getG = do
-  (g, _, _) <- get
+  (g, _, _, _) <- get
   return g
-
 
 -- | Merges 2 nodes in the graph.
 -- | The left one is removed and the right one is mantained
 -- | All the sucessors are moved to the node that remains.
 mergeNodes :: (Node, Node) -> KS ()
 mergeNodes (n1, n2) = do
-  (g, m1, m2) <- get
+  g <- getG
   let [c1, c2] = sort [n1, n2]
       es = out g c2 -- getting the edges of n2
       des = [(o, d) | (o, d, l) <- es] -- preparing to remove the edges from n2
       es' = [(c1, d, l) | (o, d, l) <- es] --preparing to add the edges to n1
       g' = insEdges es' $ delEdges des g
 
-  put (g', m1, m2)
-  liftX $ logBDD ("// before purge of " ++ show c2)
+  putG g'
+  --liftX $ logBDD ("// before purge of " ++ show c2)
   purgeNode c2
-  g'' <- getG
-  lift $ tell [("// before merge " ++ show (c1, c2) ++ "\n" ++ showGraph g ++ "\n")]
-  lift $ tell [("// after merge " ++ show (c1, c2) ++ "\n" ++ showGraph g' ++ "\n")]
-  lift $ tell [("// after purge " ++ show c2 ++ "\n" ++ showGraph g'' ++ "\n")]
-  liftX $ logBDD ("after purge of " ++ show c2)
+  --g'' <- getG
+  --lift $ tell [("// before merge " ++ show (c1, c2) ++ "\n" ++ showGraph g ++ "\n")]
+  --lift $ tell [("// after merge " ++ show (c1, c2) ++ "\n" ++ showGraph g' ++ "\n")]
+  --lift $ tell [("// after purge " ++ show c2 ++ "\n" ++ showGraph g'' ++ "\n")]
+  --liftX $ logBDD ("after purge of " ++ show c2)
 
 
 isWire n g = case l of
@@ -106,12 +111,11 @@ isWire n g = case l of
                _ -> False
   where Just l = lab g n
 
-
 purgeNode :: Node -> KS ()
 purgeNode n = do
   g <- getG
   when (gelem n g && isWire n g && outdeg g n == 0) $ do
-    liftX $ bddPurge (B n)
+    --liftX $ bddPurge (B n)
     putG (delNode n g)
     mapM_ purgeNode [o | (o, _, _) <- inn g n]
 
@@ -122,7 +126,7 @@ getPreds y = do
 
 checkResult :: KS (Either String Bool)
 checkResult =  do
-  (g, _, _) <- get
+  g <- getG
   ps <- mapM getPreds (getOutputs g)
   let ps'  = sortBy (\a b -> snd a `compare` snd b) ps
       ps'' = groupBy (\a b -> snd a == snd b) ps'
@@ -132,25 +136,26 @@ checkResult =  do
 
 storeBDD :: BDD -> Node -> KS ()
 storeBDD bdd n = do
-  (g, m1, m2) <- get
-  put (g, M.insert bdd n m1, M.insert n bdd m2)
+  (g, m1, m2, c) <- get
+  put (g, M.insert bdd n m1, M.insert n bdd m2, c)
 
 deleteBDD :: Node -> KS ()
 deleteBDD n = do
-  (g, m1, m2) <- get
-  put (g, m1, M.delete n m2)
+  (g, m1, m2, c) <- get
+  put (g, m1, M.delete n m2, c)
 
 kuelmannNode :: Node -> KS ()
 kuelmannNode n1 =
   do
-    (g, m1, m2) <- get
+    g <- getG
+    c <- getCount
     runMaybeT $ do bdd <- calcBDDNode n1
                    lift $ storeBDD bdd n1
 
     cash <- liftX $ reduceAll >> cashOut
     mapM_ mergeNodes cash
     -- TODO merge Nodes
-    trace ("Current Node: " ++ show n1 ++ "/" ++ show (size g) ++ " Cash Out: " ++ show cash) $ return ()
+    trace ("Current Node: " ++ show n1  ++ " -- " ++ show c++ "/" ++ show (size g) ++ " Cash Out: " ++ show cash) $ return ()
 
   {-
 kuelmannNode :: Node -> KS ()
@@ -197,7 +202,7 @@ runKS is g m = (r, kuelLog ++ bddLog)
   --((a0, [String]), (BDDGraph.T, [(Node, Node)]))
 
  where
-   (((r, kuelLog), bddLog), (bddGraphRes, eqs)) = runBDDState is $ flip evalStateT (g, M.empty, M.empty) (runWriterT m)
+   (((r, kuelLog), bddLog), (bddGraphRes, eqs)) = runBDDState is $ flip evalStateT (g, M.empty, M.empty, 1) (runWriterT m)
 
 -- | Checks Equivalence of circuits based on Kuelmann97
 equivKuelmann97_2 :: Verilog -> Verilog -> (Either String Bool, [String])
