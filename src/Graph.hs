@@ -6,6 +6,7 @@ import Index
 import Verilog
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Query.DFS
+import Data.Graph.Inductive.Query.BFS
 import Data.Graph.Inductive.Dot
 import Data.Graph.Inductive.NodeMap
 import Data.List
@@ -262,6 +263,8 @@ getInputs g = [n |
 
 mybfs :: G -> [Node]
 mybfs = topsort
+--mybfs = sort . nodes
+--mybfs g = bfsn [n | n <- nodes g, indeg g n == 0] g
 
 
 -- | Calculates the nodes without output edges
