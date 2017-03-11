@@ -25,6 +25,7 @@ library
                      , BDD        
                      , BDDGraph
                      , Index
+                     , Cuts
 
   build-depends:       base
                      , parallel

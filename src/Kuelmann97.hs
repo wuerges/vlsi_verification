@@ -62,6 +62,7 @@ getBDDfromEdge (o, _, v) =
   do bdd <- getBDD o
      if v then return bdd
           else liftY $ negateBDD bdd
+          --else return bdd
 
   --Just bdd <- getBDD o
   --liftX $ negateBDD bdd
@@ -88,7 +89,8 @@ getG = do
 -- | Merges 2 nodes in the graph.
 -- | The left one is removed and the right one is mantained
 -- | All the sucessors are moved to the node that remains.
-mergeNodes :: (Node, Node) -> KS ()
+-- | returns the remaining node
+mergeNodes :: (Node, Node) -> KS Node
 mergeNodes (n1, n2) = do
   g <- getG
   let [c1, c2] = sort [n1, n2]
@@ -100,6 +102,7 @@ mergeNodes (n1, n2) = do
   putG g'
   --liftX $ logBDD ("// before purge of " ++ show c2)
   purgeNode c2
+  return n2
     {-
   g'' <- getG
   lift $ tell [("// before merge " ++ show (c1, c2) ++ "\n" ++ showGraph g ++ "\n")]
@@ -122,20 +125,15 @@ purgeNode n = do
     putG (delNode n g)
     mapM_ purgeNode [o | (o, _, _) <- inn g n]
 
-getPreds :: Node -> KS (Node, [(Node, Bool)])
-getPreds y = do
-  g <- getG
-  return (y, sort $ [(o, v) | (o, d, v) <- inn g y])
+getPreds :: G -> Node -> (Node, [(Node, Bool)])
+getPreds g y = (y, sort $ [(o, v) | (o, d, v) <- inn g y])
 
-checkResult :: KS (Either String Bool)
-checkResult =  do
-  g <- getG
-  ps <- mapM getPreds (getOutputs g)
-  let ps'  = sortBy (\a b -> snd a `compare` snd b) ps
-      ps'' = groupBy (\a b -> snd a == snd b) ps'
-      r = all (\x -> length x >= 2) ps''
-  return $ -- $ traceShow (getOutputs g, ps'', r) $
-    Right r
+checkResult :: G -> Bool
+checkResult g = r
+  where ps = map (getPreds g) (getOutputs g)
+        ps'  = sortBy (\a b -> snd a `compare` snd b) ps
+        ps'' = groupBy (\a b -> snd a == snd b) ps'
+        r = all (\x -> length x >= 2) ps''
 
 storeBDD :: BDD -> Node -> KS ()
 storeBDD bdd n = do
@@ -147,7 +145,7 @@ deleteBDD n = do
   (g, m1, m2, c) <- get
   put (g, m1, M.delete n m2, c)
 
-kuelmannNode :: Node -> KS ()
+kuelmannNode :: Node -> KS [Node]
 kuelmannNode n1 =
   do
     g <- getG
@@ -156,9 +154,9 @@ kuelmannNode n1 =
                    lift $ storeBDD bdd n1
 
     cash <- liftX $ reduceAll >> cashOut
-    mapM_ mergeNodes cash
+    rem <- mapM mergeNodes cash
     -- TODO merge Nodes
-    --trace (printf "Current Node: %5d -- %5d/%5d Cash Out %s" n1 c (size g) (show cash)) $ return ()
+    trace (printf "Current Node: %5d -- %5d/%5d Cash Out %s" n1 c (size g) (show cash)) $ return rem
 
   {-
 kuelmannNode :: Node -> KS ()
@@ -207,12 +205,12 @@ runKS is ns g m = (r, kuelLog ++ bddLog)
  where
    (((r, kuelLog), bddLog), (bddGraphRes, eqs)) = runBDDState is ns $ flip evalStateT (g, M.empty, M.empty, 1) (runWriterT m)
 
--- | Checks Equivalence of circuits based on Kuelmann97
+
 equivKuelmann97_2 :: Verilog -> Verilog -> (Either String Bool, [String])
-equivKuelmann97_2 v1 v2 =
-  runKS inputs ns g $ do mapM_ kuelmannNode todo
-                         checkResult
+equivKuelmann97_2 v1 v2 = (Right (checkResult g'), log)
   where g = makeGraphV [v1, v2]
         todo = mybfs g
         inputs = getInputs g
         ns = nodes g
+        (g', log) = runKS inputs ns g $ do mapM_ kuelmannNode todo
+                                           getG
