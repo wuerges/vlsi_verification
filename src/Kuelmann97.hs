@@ -158,7 +158,7 @@ kuelmannNode n1 =
     cash <- liftX $ reduceAll >> cashOut
     mapM_ mergeNodes cash
     -- TODO merge Nodes
-    trace (printf "Current Node: %5d -- %5d/%5d Cash Out %s" n1 c (size g) (show cash)) $ return ()
+    --trace (printf "Current Node: %5d -- %5d/%5d Cash Out %s" n1 c (size g) (show cash)) $ return ()
 
   {-
 kuelmannNode :: Node -> KS ()
