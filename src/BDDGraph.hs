@@ -219,6 +219,17 @@ bddAndRepr n b1 b2 = do
   --tell ["// bddAndRepr - before " ++ show (n, b1, b2) ++ "\n" ++ showBDD g ++ "\n" ]
   bddAnd (Just n) b1 b2
 
+getOrdering :: Node -> Node -> BDDState Ordering
+getOrdering n1 n2 = do
+  {-
+  return $ n1 `compare` n2
+  --traceM $ " get Ordering " ++ show (n1, n2)
+  -}
+  m <- ordering <$> get
+  let Just o1 = M.lookup n1 m
+      Just o2 = M.lookup n2 m
+  return $ o1 `compare` o2
+
 bddAnd :: Maybe Node -> BDD -> BDD -> BDDState BDD
 
 bddAnd Nothing (B 0) _ =
@@ -239,13 +250,16 @@ bddAnd repr (B 1) (B b) = do
 bddAnd repr b (B 1) = bddAnd repr (B 1) b
 
 
+
 bddAnd repr (B n1) (B n2) = do
   v_n1 <- inputNodeM n1
   v_n2 <- inputNodeM n2
   (z1, o1) <- getSons n1
   (z2, o2) <- getSons n2
 
-  case v_n1 `compare` v_n2 of
+  ord <- getOrdering v_n1 v_n2
+  case ord of
+  --case v_n1 `compare` v_n2 of
     GT -> do
       B z <- bddAnd Nothing (B z1) (B n2)
       B o <- bddAnd Nothing (B o1) (B n2)

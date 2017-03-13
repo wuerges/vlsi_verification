@@ -212,12 +212,20 @@ calcBDDNode n = do
        liftY $ bddAndMany (Just n) is
 
 
+genOrdering :: G -> I.IntMap Node
+genOrdering g = I.fromList $ zip values [1..]
+  where --is = S.fromList $ getInputs g
+        --values = filter (\e -> S.member e is) (mybfs g)
+        values = mybfs g
+
+
 runKS :: [Node] -> [Node] -> G -> KS a -> (a, [String])
 runKS is ns g m = (r, kuelLog ++ bddLog)
   --((a0, [String]), (BDDGraph.T, [(Node, Node)]))
 
  where
-   (((r, kuelLog), bddLog), (bddGraphRes, eqs)) = runBDDState is ns I.empty $ flip evalStateT (g, M.empty, M.empty, 1) (runWriterT m)
+   ord = genOrdering g
+   (((r, kuelLog), bddLog), (bddGraphRes, eqs)) = runBDDState is ns ord $ flip evalStateT (g, M.empty, M.empty, 1) (runWriterT m)
 
 
 equivKuelmann97_2 :: Verilog -> Verilog -> (Either String Bool, [String])
