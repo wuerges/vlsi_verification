@@ -217,7 +217,7 @@ runKS is ns g m = (r, kuelLog ++ bddLog)
   --((a0, [String]), (BDDGraph.T, [(Node, Node)]))
 
  where
-   (((r, kuelLog), bddLog), (bddGraphRes, eqs)) = runBDDState is ns $ flip evalStateT (g, M.empty, M.empty, 1) (runWriterT m)
+   (((r, kuelLog), bddLog), (bddGraphRes, eqs)) = runBDDState is ns I.empty $ flip evalStateT (g, M.empty, M.empty, 1) (runWriterT m)
 
 
 equivKuelmann97_2 :: Verilog -> Verilog -> (Either String Bool, [String])

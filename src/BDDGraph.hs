@@ -42,7 +42,7 @@ data BDDStateD = S { graph :: T
                    , ordering :: M.IntMap Int }
 
 --type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
-type BDDState = WriterT [String] (State (T, [(Node,Node)]))
+type BDDState = WriterT [String] (State BDDStateD)
 
 logBDD :: String -> BDDState ()
 logBDD c = do
@@ -59,10 +59,13 @@ reserveNodes ns =
  {- For a StateT with a writer
 --type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
   -}
-runBDDState is ns op = flip runState (startingG, []) $ runWriterT  $ do
-  reserveNodes ns
-  mapM initialBDD is
-  op
+
+runBDDState :: [Node] -> [Node] -> M.IntMap Int -> (BDDState a)
+            -> ((a, [String]), (T, [(Node, Node)]))
+runBDDState is ns order op = (r, (graph s, equals s))
+  where (r, s) = flip runState (S startingG [] order) $ runWriterT $ do reserveNodes ns
+                                                                        mapM initialBDD is
+                                                                        op
 
  {- For a StateT with a writer
 --type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
@@ -78,23 +81,23 @@ runBDDState is op = flip runState (startingG, []) $ do
   op
 -}
 getG :: BDDState T
-getG = fst <$> get
+getG =  graph <$> get
 
 modifyG :: (T -> T) -> BDDState ()
 modifyG f = do
-  (g, m) <- get
-  put (f g, m)
+  s <- get
+  put $ s { graph = f (graph s) }
 
 equate :: Node -> Node -> BDDState ()
 equate n1 n2 = do
-  (g, m) <- get
-  put (g, (n1, n2):m)
+  s <- get
+  put $ s { equals = (n1, n2):(equals s) }
 
 cashOut :: BDDState [(Node, Node)]
 cashOut = do
-  (g, m) <- get
-  put (g, [])
-  return m
+  s <- get
+  put $ s { equals = [] }
+  return $ equals s
 
 initialBDD :: Node -> BDDState BDD
 initialBDD n = do
