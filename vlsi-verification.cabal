@@ -40,6 +40,7 @@ library
                      , transformers
                      , monad-memo
                      , dotgen
+                     , monad-loops
   default-language:    Haskell2010
 
 

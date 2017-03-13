@@ -10,6 +10,8 @@ import Control.Monad.State
 import Data.Ord
 import Data.List
 import Data.Maybe
+import qualified Data.IntMap as M
+
 
 newtype BDD = B Int
   deriving (Eq, Ord, Show)
@@ -34,6 +36,10 @@ showBDD g = showDot $ do
   mapM_ (same . map userNodeId) (layers g)
 
 type Ctx = Context V Bool
+
+data BDDStateD = S { graph :: T
+                   , equals :: [(Node, Node)]
+                   , ordering :: M.IntMap Int }
 
 --type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
 type BDDState = WriterT [String] (State (T, [(Node,Node)]))
@@ -348,6 +354,10 @@ layers = map (map fst) . sortAndGroupBy ginput . filter (\x -> ginput x > 0) . l
         g a b = ginput a == ginput b
         t a = ginput a > 0
         -}
+
+
+getSize :: BDDState Int
+getSize = (length . nodes) <$> getG
 
 
 reduceAll :: BDDState ()

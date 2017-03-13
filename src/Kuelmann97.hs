@@ -5,7 +5,7 @@ import Verilog
 import Equivalence
 import Graph
 import BDDGraph (BDD(B), BDDState, runBDDState, negateBDD, initialBDD, cashOut,
-                bddZero, bddOne, bddAndMany, reduceAll, bddPurge, logBDD)
+                bddZero, bddOne, bddAndMany, reduceAll, bddPurge, logBDD, getSize)
 --Graph (BDD, initialBDD, negateBDD, bddOne, bddAnd)
 --import BDD
 
@@ -112,15 +112,27 @@ mergeNodes (n1, n2) = do
   -}
 
 
+isWireOrInput n g = case l of
+                      Wire _ -> True
+                      Input _ -> True
+                      _ -> False
+  where Just l = lab g n
+
 isWire n g = case l of
                Wire _ -> True
                _ -> False
   where Just l = lab g n
 
+purgeNode' :: Node -> KS ()
+purgeNode' n = do
+  g <- getG
+  putG (delNode n g)
+  mapM_ purgeNode [o | (o, _, _) <- inn g n]
+
 purgeNode :: Node -> KS ()
 purgeNode n = do
   g <- getG
-  when (gelem n g && isWire n g && outdeg g n == 0) $ do
+  when (gelem n g && isWireOrInput n g && outdeg g n == 0) $ do
     --liftX $ bddPurge (B n)
     putG (delNode n g)
     mapM_ purgeNode [o | (o, _, _) <- inn g n]
@@ -156,7 +168,9 @@ kuelmannNode n1 =
     cash <- liftX $ reduceAll >> cashOut
     rem <- mapM mergeNodes cash
     -- TODO merge Nodes
-    trace (printf "Current Node: %5d -- %5d/%5d Cash Out %s" n1 c (size g) (show cash)) $ return rem
+    sz <- liftX getSize
+    trace (printf "Current Node: %5d -- %5d/%5d -- BDD Size: %5d -- Cash Out %s" n1 c (size g) sz (show cash)) $ return rem
+    return rem
 
   {-
 kuelmannNode :: Node -> KS ()
