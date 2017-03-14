@@ -56,7 +56,7 @@ bddAndMany' repr sons g = withGraph g (bddAndMany repr sons)
 instance Arbitrary G_BDD where
   arbitrary = do I_BDD x <- arbitrary
                  r <- elements $ [n | (n, V v _) <- labNodes x, v == (-2)]
-                 sons <- sublistOf $ [B n | (n, V v _) <- labNodes x, v /= (-2)]
+                 sons <- sublistOf ([B n | (n, V v _) <- labNodes x, v /= (-2)]) `suchThat` (\l -> length l > 1)
                  return $ G_BDD $ bddAndMany' (Just r) sons x
 
 
