@@ -4,7 +4,7 @@ import Verilog
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Query.DFS
-import BDDGraph (getSize)
+import BDDGraphMonad (getSize)
 import Kuelmann97
 import Graph
 import Control.Monad.State

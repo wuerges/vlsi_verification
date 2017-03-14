@@ -6,6 +6,7 @@ import Test.QuickCheck.Gen
 import Data.Graph.Inductive
 
 import BDDGraph
+import BDDGraphMonad
 
 instance Arbitrary V where
   arbitrary = do
@@ -49,11 +50,14 @@ instance Arbitrary I_BDD where
 newtype G_BDD = G_BDD T
   deriving Show
 
+
+bddAndMany' repr sons g = withGraph g (bddAndMany repr sons)
+
 instance Arbitrary G_BDD where
   arbitrary = do I_BDD x <- arbitrary
                  r <- elements $ [n | (n, V v _) <- labNodes x, v == (-2)]
-                 sons <- sublistOf $ [n | (n, V v _) <- labNodes x, v /= (-2)]
-                 return $ G_BDD $ bddAndMany (Just r) sons
+                 sons <- sublistOf $ [B n | (n, V v _) <- labNodes x, v /= (-2)]
+                 return $ G_BDD $ bddAndMany' (Just r) sons x
 
 
 prop_input_sons (I_BDD g) = all f ns
@@ -65,8 +69,7 @@ prop_input_sons (I_BDD g) = all f ns
                   (v == (-2) && length os == 0) || (length os == 2)
 
 
-
-
+prop_input_sons2 (G_BDD g) = prop_input_sons (I_BDD g)
 
 return []
 --runTests = $verboseCheckAll

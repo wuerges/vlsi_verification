@@ -4,10 +4,10 @@ module Kuelmann97 where
 import Verilog
 import Equivalence
 import Graph
-import BDDGraph (BDD(B), BDDState, runBDDState, negateBDD, initialBDD_M, cashOut,
-                bddZero, bddOne, bddAndMany, reduceAll, bddPurge, logBDD, getSize)
---Graph (BDD, initialBDD, negateBDD, bddOne, bddAnd)
---import BDD
+import BDDGraphMonad (BDDState, runBDDState
+  , initialBDD_M, cashOut, bddAndMany
+  , reduceAll, logBDD, getSize, negateBDDM )
+import BDDGraph (bddZero, bddOne, BDD(B), BDDOrdering)
 
 import Control.Monad.State
 import Control.Monad.Writer
@@ -61,7 +61,7 @@ getBDDfromEdge :: LEdge Bool -> MaybeT KS BDD
 getBDDfromEdge (o, _, v) =
   do bdd <- getBDD o
      if v then return bdd
-          else liftY $ negateBDD bdd
+          else liftY $ negateBDDM bdd
           --else return bdd
 
   --Just bdd <- getBDD o
@@ -212,11 +212,17 @@ calcBDDNode n = do
        liftY $ bddAndMany (Just n) is
 
 
-genOrdering :: G -> I.IntMap Node
-genOrdering g = I.fromList $ zip values [1..]
+--genOrdering :: G -> I.IntMap Node
+genOrdering :: G -> BDDOrdering
+genOrdering g = f
   where --is = S.fromList $ getInputs g
         --values = filter (\e -> S.member e is) (mybfs g)
         values = mybfs g
+        m = I.fromList $ zip values [1..]
+        f n1 n2 =
+            let Just o1 = I.lookup n1 m
+                Just o2 = I.lookup n2 m
+             in o1 `compare` o2
 
 
 runKS :: [Node] -> [Node] -> G -> KS a -> (a, [String])
