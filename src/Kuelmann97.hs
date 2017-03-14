@@ -4,7 +4,7 @@ module Kuelmann97 where
 import Verilog
 import Equivalence
 import Graph
-import BDDGraph (BDD(B), BDDState, runBDDState, negateBDD, initialBDD, cashOut,
+import BDDGraph (BDD(B), BDDState, runBDDState, negateBDD, initialBDD_M, cashOut,
                 bddZero, bddOne, bddAndMany, reduceAll, bddPurge, logBDD, getSize)
 --Graph (BDD, initialBDD, negateBDD, bddOne, bddAnd)
 --import BDD
@@ -204,7 +204,7 @@ calcBDDNode n = do
             Output _ -> error "should not be empty"
             ValZero -> return bddZero
             ValOne -> return bddOne
-            Input _ -> liftY $ initialBDD n
+            Input _ -> liftY $ initialBDD_M n
 
      else do
        let inp_edges = (inn g n)

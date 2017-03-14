@@ -53,9 +53,9 @@ logBDD c = do
 startingG :: T
 startingG = mkGraph [(0,V (-1) True), (1, V (-1) True)] []
 
-reserveNodes :: [Node] -> BDDState ()
+reserveNodes :: [Node] -> T -> T
 reserveNodes ns =
-  modifyG $ insNodes $ zip ns (repeat (V (-1) True))
+  insNodes $ zip ns (repeat (V (-2) True))
 
  {- For a StateT with a writer
 --type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
@@ -64,9 +64,10 @@ reserveNodes ns =
 runBDDState :: [Node] -> [Node] -> M.IntMap Int -> (BDDState a)
             -> ((a, [String]), (T, [(Node, Node)]))
 runBDDState is ns order op = (r, (graph s, equals s))
-  where (r, s) = flip runState (S startingG [] order) $ runWriterT $ do reserveNodes ns
-                                                                        mapM initialBDD is
-                                                                        op
+  where
+    g = initialBDD' is $ reserveNodes ns startingG
+    (r, s) = flip runState (S g [] order) $ runWriterT $ op
+
 
  {- For a StateT with a writer
 --type BDDState a = StateT (T, [(Node,Node)]) (Writer [String]) a
@@ -100,6 +101,17 @@ cashOut = do
   put $ s { equals = [] }
   return $ equals s
 
+
+initialBDD :: Node -> T -> T
+initialBDD n g = ctx & g'
+  where (Just (_, _, v, _), g') = match n g
+        ctx = ([], n, V n True, [(True, 1), (False, 0)])
+
+initialBDD' :: [Node] -> T -> T
+initialBDD' ns g = foldr initialBDD g ns
+
+{-
+
 initialBDD :: Node -> BDDState BDD
 initialBDD n = do
   g <- getG
@@ -107,6 +119,7 @@ initialBDD n = do
       g'' = ([], n, V n True, [(True, 1), (False, 0)]) & g
   modifyG $ const g''
   return $ B n
+  -}
     {-
   unless (gelem n g) $ do
     modifyG $ insNode (n, V n True)
@@ -389,4 +402,14 @@ reduceAll = do
         -}
   mapM_ reduceLayer $ layers g
   -- mapM_ bddPurge' (map B (nodes g))
+
+
+-- Monadic functions show be bellow here
+
+initialBDD_M :: Node -> BDDState BDD
+initialBDD_M n =
+  do modifyG $ initialBDD n
+     return $ B n
+
+
 

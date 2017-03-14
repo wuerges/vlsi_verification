@@ -10,5 +10,7 @@ import Test.HUnit
 --sTests = TestList [TestGraph.tests]
 
 main = do
-  r <- runTestTT $ TestBDDGraph.tests
-  print r
+  QC_BDD.runTests
+  --print ts
+  --r <- runTestTT $ TestBDDGraph.tests
+  --print r

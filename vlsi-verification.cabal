@@ -49,6 +49,9 @@ test-suite integration-tests
   type: exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is: TestSuite.hs
+  other-modules:  QC_BDD
+                  , TestBDDGraph
+                  , TestBase
   build-depends:       base
                      , vlsi-verification
                      , HUnit
