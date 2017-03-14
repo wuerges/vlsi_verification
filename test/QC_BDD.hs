@@ -46,6 +46,16 @@ instance Arbitrary I_BDD where
 
 
 
+newtype G_BDD = G_BDD T
+  deriving Show
+
+instance Arbitrary G_BDD where
+  arbitrary = do I_BDD x <- arbitrary
+                 r <- elements $ [n | (n, V v _) <- labNodes x, v == (-2)]
+                 sons <- sublistOf $ [n | (n, V v _) <- labNodes x, v /= (-2)]
+                 return $ G_BDD $ bddAndMany (Just r) sons
+
+
 prop_input_sons (I_BDD g) = all f ns
   where ns = nodes g
         f n = case context g n of
