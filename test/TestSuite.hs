@@ -1,6 +1,6 @@
 
 
-import QT_BDDGraph
+import QC_BDD
 import TestBDDGraph
 --import TestGraph
 --import TestJuelmann97
