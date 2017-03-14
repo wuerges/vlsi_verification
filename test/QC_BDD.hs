@@ -18,8 +18,9 @@ newtype S_BDD = S_BDD T
 
 
 genNode :: Gen Node
-genNode = do Positive x <- arbitrary
-             return x
+genNode = arbitrary `suchThat` (>1)
+--do Positive x <- arbitrary
+             --return x
 
 instance Arbitrary S_BDD where
   arbitrary = do l <- listOf genNode
@@ -41,7 +42,6 @@ newtype I_BDD = I_BDD T
 instance Arbitrary I_BDD where
   arbitrary = do S_BDD x <- arbitrary
                  is <- sublistOf $ [n | n <- nodes x, n > 1]
-                 -- TODO ^ this is a problem, node must be > 1
                  return $ I_BDD (initialBDD' is x)
 
 
