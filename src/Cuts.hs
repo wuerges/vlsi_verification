@@ -2,6 +2,8 @@ module Cuts (retryEquivLimited_2) where
 
 import Verilog
 import Data.Graph.Inductive
+import Data.Graph.Inductive.Basic
+import Data.Graph.Inductive.Query.DFS
 import BDDGraph (getSize)
 import Kuelmann97
 import Graph
@@ -23,7 +25,7 @@ whileTodoM test action (t:ts) = do
        else return []
 
 stopTest = do x <- liftX $ getSize
-              return $ x < 3000
+              return $ x < 10000
 
 -- | Checks the equivalence o a small set of nodes.
 -- | Marks the equivalent nodes to become inputs
@@ -38,6 +40,14 @@ equivLimited g is = (g', eqs, log)
                          return (concat m_eqs, m_g)
 
 
+cutGraph :: [Node] -> G -> G
+cutGraph is g = sg --gmap changeInput sg
+  where
+    os = getOutputs g
+    rem = dfs os (grev g)
+    sg = subgraph rem g
+
+
 --type RetryState = State ([Node], G)
 
 rmdups = map head . group . sort
@@ -47,8 +57,9 @@ retryEquivLimited is g  =
   trace ("Retrying: " ++ show (size g', size g)) $
     if (size g' >= size g) || checkResult g'
        then checkResult g'
-       else retryEquivLimited (rmdups $ is ++ is') g'
+       else retryEquivLimited (rmdups $ is ++ is') cg
  where (g', is', l) = equivLimited g is
+       cg = cutGraph is' g'
 
 retryEquivLimited_2 :: Verilog -> Verilog -> (Either String Bool, [String])
 retryEquivLimited_2 v1 v2 = (Right r, [])
