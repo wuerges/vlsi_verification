@@ -1,3 +1,5 @@
+module TestBDDGraph (tests) where
+
 import TestBase
 
 --import Test.QuickCheck
@@ -5,17 +7,18 @@ import BDDGraph
 import Test.HUnit
 import Data.Graph.Inductive
 import Text.Printf
+import qualified Data.IntMap as I
 
-initials_3_4_5 = runBDDState [3,4,5] [] $ return ()
-initials_3_4_5_dups = runBDDState [3,4,5] [10, 11, 12] $ do
+initials_3_4_5 = runBDDState [3,4,5] [] I.empty $ return ()
+initials_3_4_5_dups = runBDDState [3,4,5] [10, 11, 12] I.empty $ do
   dupNode (Just 10) 3
   dupNode (Just 11) 4
   dupNode (Just 12) 5
 
-initial_3 = runBDDState [2] [10] $
+initial_3 = runBDDState [2] [10] I.empty $
   bddAndMany (Just 10) [B 2]
 
-bddSpace = runBDDState [3,4,5] [10, 20] $ do
+bddSpace = runBDDState [3,4,5] [10, 20] I.empty $ do
   b1 <- bddAndRepr 10 (B 3) (B 4)
   b2 <- bddAndRepr 20 (B 4) (B 5)
   --bddAndRepr 8 b1 (B 5)
@@ -23,12 +26,12 @@ bddSpace = runBDDState [3,4,5] [10, 20] $ do
   bddAndMany (Just 40) [b1, B 5]
   reduceAll
 
-simpleDup =  runBDDState [3] [10] $ do
+simpleDup =  runBDDState [3] [10] I.empty $ do
   (l, r) <- getSons 3
   newParent (Just 10) 3 (l, r)
   reduceAll
 
-equate_4_5 = runBDDState [3] [] $ do
+equate_4_5 = runBDDState [3] [] I.empty $ do
   equate 4 5
 
 --getGM = fst . snd . fst
@@ -82,7 +85,5 @@ t7 =
      --putStrLn $ "\nG: -> " ++ showBDD g
      assertEqual "layers_3" 2 (length ls)
 
+tests = TestList [t1, t2, t3, t4, t5, t6, t7]
 
-main = do
-  r <- runTestTT $ TestList [t1, t2, t3, t4, t5, t6, t7]
-  print r

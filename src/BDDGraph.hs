@@ -50,7 +50,8 @@ logBDD c = do
   tell ["// " ++ c ++ "\n" ++ showBDD g ++ "\n" ]
 
 
-startingG = mkGraph [(0,V (-1) True), (1, V (-1) True)] [] :: T
+startingG :: T
+startingG = mkGraph [(0,V (-1) True), (1, V (-1) True)] []
 
 reserveNodes :: [Node] -> BDDState ()
 reserveNodes ns =
