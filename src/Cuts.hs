@@ -1,4 +1,4 @@
-module Cuts (retryEquivLimited_2) where
+module Cuts where
 
 import Verilog
 import Data.Graph.Inductive
@@ -12,7 +12,9 @@ import Control.Monad.Writer
 import Control.Monad.Loops
 import Data.List
 import Debug.Trace
-
+import qualified Data.IntMap as I
+import qualified Data.Set as S
+import Data.Maybe
 
 
 whileTodoM :: Monad m => (m Bool) -> (a -> m b) -> [a] -> m [b]
@@ -38,6 +40,18 @@ equivLimited g is = (g', eqs, log)
       runKS is ns g $ do m_eqs <- whileTodoM stopTest kuelmannNode todo
                          m_g <- getG
                          return (concat m_eqs, m_g)
+
+cutLevelsGraph :: G -> [Node] -> I.IntMap Node
+cutLevelsGraph g cuts = foldr doNode I.empty (mybfs g)
+  where
+    s = S.fromList cuts
+    level m n = maybe 0 id (I.lookup n m)
+    cutLevel n m = foldr max 0 (map (level m) (pre g n))
+    cutLevel' n m
+      | S.member n s = cutLevel n m + 1
+      | otherwise = cutLevel n m
+    doNode n m = I.insert n (cutLevel n m + (if S.member n s then 1 else 0)) m
+
 
 
 cutGraph :: [Node] -> G -> G
