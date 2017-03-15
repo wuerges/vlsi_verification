@@ -114,7 +114,7 @@ propManual_reduced_bdd (R_BDD g) = prop_input_sons (I_BDD g)
 return []
 runTests = do
   $quickCheckAll
-  quickCheckWith stdArgs { maxSuccess = 20 } propManual_input_sons2
-  quickCheckWith stdArgs { maxSuccess = 20 } propManual_reduced_bdd
+  quickCheckWith stdArgs { maxSuccess = 1 } propManual_input_sons2
+  quickCheckWith stdArgs { maxSuccess = 1 } propManual_reduced_bdd
 
 

@@ -51,6 +51,8 @@ test-suite integration-tests
   hs-source-dirs:      test
   main-is: TestSuite.hs
   other-modules:  QC_BDD
+                  , QC_Graph
+                  , QC_Cuts
                   , TestBDDGraph
                   , TestBase
   build-depends:       base
