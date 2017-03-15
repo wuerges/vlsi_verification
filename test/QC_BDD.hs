@@ -55,12 +55,18 @@ bddAndMany' repr sons g = withGraph g (bddAndMany repr sons)
 
 
 
-withG_G_BDD x = do let els = [n | (n, V v _) <- labNodes x, v == (-2)]
-                   r <- case els of
-                          [] -> return Nothing
-                          els' -> Just <$> elements els'
-                   sons <- sublistOf ([B n | (n, V v _) <- labNodes x, v /= (-2)]) `suchThat` (\l -> length l > 1)
-                   return $ G_BDD $ bddAndMany' r sons x
+withG_G_BDD x =
+  let els = [n | (n, V v _) <- labNodes x, v == (-2)]
+   in do
+     r <- case els of
+            [] -> return Nothing
+            els' -> Just <$> elements els'
+
+     sons <- sublistOf ([B n
+       | (n, V v _) <- labNodes x, v /= (-2)])
+       `suchThat` (\l -> length l > 1)
+
+     return $ G_BDD $ bddAndMany' r sons x
 
 instance Arbitrary G_BDD where
   arbitrary = oneof [ do I_BDD x <- arbitrary
