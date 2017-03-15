@@ -53,14 +53,25 @@ newtype G_BDD = G_BDD T
 
 bddAndMany' repr sons g = withGraph g (bddAndMany repr sons)
 
+
+
+withG_G_BDD x = do let els = [n | (n, V v _) <- labNodes x, v == (-2)]
+                   r <- case els of
+                          [] -> return Nothing
+                          els' -> Just <$> elements els'
+                   sons <- sublistOf ([B n | (n, V v _) <- labNodes x, v /= (-2)]) `suchThat` (\l -> length l > 1)
+                   return $ G_BDD $ bddAndMany' r sons x
+
 instance Arbitrary G_BDD where
-  arbitrary = do I_BDD x <- arbitrary
-                 r <- elements $ [n | (n, V v _) <- labNodes x, v == (-2)]
-                 sons <- sublistOf ([B n | (n, V v _) <- labNodes x, v /= (-2)]) `suchThat` (\l -> length l > 1)
-                 return $ G_BDD $ bddAndMany' (Just r) sons x
+  arbitrary = oneof [ do I_BDD x <- arbitrary
+                         withG_G_BDD x
+                    , do G_BDD x <- arbitrary
+                         withG_G_BDD x
+                    ]
 
 
 prop_input_sons (I_BDD g) = all f ns
+
   where ns = nodes g
         f n = case context g n of
                 (is, 0, V v b, os) -> os == [] && v == (-1) &&  b
@@ -69,8 +80,14 @@ prop_input_sons (I_BDD g) = all f ns
                   (v == (-2) && length os == 0) || (length os == 2)
 
 
-prop_input_sons2 (G_BDD g) = prop_input_sons (I_BDD g)
+propManual_input_sons2 (G_BDD g) = prop_input_sons (I_BDD g)
+
+--runTests = $verboseCheckAll
+--runTests = $quickCheckAll
 
 return []
---runTests = $verboseCheckAll
-runTests = $quickCheckAll
+runTests = do
+  $quickCheckAll
+  quickCheckWith stdArgs { maxSuccess = 40 } propManual_input_sons2
+
+
