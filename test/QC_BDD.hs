@@ -68,15 +68,31 @@ withG_G_BDD x =
 
      return $ G_BDD $ bddAndMany' r sons x
 
+
+tryNegate x =
+  let els = [n | (n, V v _) <- labNodes x, v > 1]
+   in case els of
+        [] -> return x
+        els' -> do
+          n <- elements els'
+          return $ snd $ negateBDD (B n) x
+
 instance Arbitrary G_BDD where
   arbitrary = oneof [ do I_BDD x <- arbitrary
                          withG_G_BDD x
                     , do G_BDD x <- arbitrary
                          withG_G_BDD x
                     , do G_BDD x <- arbitrary
-                         n <- elements $ nodes x
-                         return $ G_BDD $ snd $ negateBDD (B n) x
+                         G_BDD <$> tryNegate x
                     ]
+
+
+newtype R_BDD = R_BDD T
+  deriving Show
+
+instance Arbitrary R_BDD where
+  arbitrary = do G_BDD x <- arbitrary
+                 return $ R_BDD $ withGraph x $ reduceAll
 
 
 prop_input_sons (I_BDD g) = all f ns
@@ -90,6 +106,7 @@ prop_input_sons (I_BDD g) = all f ns
 
 
 propManual_input_sons2 (G_BDD g) = prop_input_sons (I_BDD g)
+propManual_reduced_bdd (R_BDD g) = prop_input_sons (I_BDD g)
 
 --runTests = $verboseCheckAll
 --runTests = $quickCheckAll
@@ -97,6 +114,7 @@ propManual_input_sons2 (G_BDD g) = prop_input_sons (I_BDD g)
 return []
 runTests = do
   $quickCheckAll
-  quickCheckWith stdArgs { maxSuccess = 40 } propManual_input_sons2
+  quickCheckWith stdArgs { maxSuccess = 20 } propManual_input_sons2
+  quickCheckWith stdArgs { maxSuccess = 20 } propManual_reduced_bdd
 
 
