@@ -73,6 +73,9 @@ instance Arbitrary G_BDD where
                          withG_G_BDD x
                     , do G_BDD x <- arbitrary
                          withG_G_BDD x
+                    , do G_BDD x <- arbitrary
+                         n <- elements $ nodes x
+                         return $ G_BDD $ snd $ negateBDD (B n) x
                     ]
 
 
