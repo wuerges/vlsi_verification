@@ -61,8 +61,6 @@ cutGraph is g = sg --gmap changeInput sg
     rem = dfs os (grev g)
     sg = subgraph rem g
 
---rmdups = map head . group . sort
-
 retryEquivLimited :: G -> Bool
 retryEquivLimited g  =
   trace ("Retrying: " ++ show (order g', order g)) $

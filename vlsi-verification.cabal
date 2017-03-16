@@ -27,6 +27,7 @@ library
                      , BDDGraphMonad
                      , Index
                      , Cuts
+                     , Util
 
   build-depends:       base
                      , parallel

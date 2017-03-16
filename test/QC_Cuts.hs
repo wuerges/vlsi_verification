@@ -10,20 +10,14 @@ import Debug.Trace
 import qualified Data.IntMap as I
 
 import Graph
+import QC_Graph (TestGraph(TG))
 import Cuts
-import Verilog
-
-instance Arbitrary Val where
-  arbitrary = do x <- arbitrary
-                 oneof [ return $ Wire x
-                       , return $ Input x
-                       , return $ Output x ]
 
 data CutLevel = C G (I.IntMap Node) [Node]
   deriving Show
 
 instance Arbitrary CutLevel where
-  arbitrary = do NL (NME x) <- arbitrary
+  arbitrary = do TG x <- arbitrary
                  cs <- sublistOf $ nodes x
                  return $ C x (cutLevelsGraph x cs) cs
 

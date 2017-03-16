@@ -10,6 +10,7 @@ import Data.Graph.Inductive.Query.BFS
 import Data.Graph.Inductive.Dot
 import Data.Graph.Inductive.NodeMap
 import Data.List
+import Util
 import Control.Arrow
 import Debug.Trace
 import System.Random
@@ -234,3 +235,59 @@ isOutput g n = outdeg g n == 0
 
 getOutputs :: G -> [Node]
 getOutputs g = filter (isOutput g) $ nodes g
+
+
+
+-- | Silly stuff from here
+--
+
+renumberGraph :: Int -> G -> G
+renumberGraph offset g = mkGraph ns es
+  where
+    ns = map (rnLabNode offset) (labNodes g)
+    es = map (rnLabEdge offset) (labEdges g)
+
+rnLabEdge off (a, b, l) =
+  ( rnNode off a
+  , rnNode off b
+  , l)
+
+rnLabNode off (a, l) = (rnNode off a, l)
+
+
+notVal :: Int -> Bool
+notVal x = (x /= 0) && (x /= 1)
+
+offset :: G -> G -> Int
+offset g1 g2 = (max b1 b2 - min a1 a2) + 1
+  where (a1, b1) = nodeRange g1
+        (a2, b2) = nodeRange g2
+
+rnNode off n =
+  case n of
+    0 -> 0
+    1 -> 1
+    x -> x + off
+
+joinGraphs :: G -> G -> G
+joinGraphs g1 g2 =
+  insEdges es' $ insNodes ns' gu
+  where
+    off = offset g1 g2
+    g2' = renumberGraph off g2
+
+    gu = insEdges (labEdges g2') $
+         insNodes
+            (filter (fst . first notVal) $ labNodes g2')
+         g1
+
+    is1 = filter notVal $ getInputs g1
+    is2 = filter notVal $ getInputs g2
+
+    is = zip (sort is1) (sort is2)
+    ns' = zip (newNodes (length is) gu)
+              (repeat "<extra input>")
+    es' = concat [[(a, b1, True), (a, b2, True)]
+      | ((a, _), (b1,b2)) <- zip ns' is]
+
+
