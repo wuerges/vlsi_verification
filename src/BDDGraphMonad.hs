@@ -70,7 +70,7 @@ getBDDfromEdge (o, _, v) =
        else negateBDDM $ B o
 
 withGraph :: T -> (BDDState a) -> T
-withGraph t op = undefined
+withGraph t op =
   runKS (empty :: G) $ evalStateT (op >> getT) $ S t [] compare 0
 
 

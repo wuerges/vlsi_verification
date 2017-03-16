@@ -29,7 +29,7 @@ kuelmannNode n1 =
     o <- order <$> getG
     c <- getCount
     sz <- getSize
-    traceM (printf "Current Node: %5d -- %5d/%5d -- BDD Size: %5d -- Cash Out %s" n1 c o sz)
+    traceM (printf "Current Node: %5d -- %5d/%5d -- BDD Size: %5d" n1 c o sz)
     return ()
 
 equivVerilog :: Verilog -> Verilog -> Either String Bool
