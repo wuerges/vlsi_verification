@@ -24,7 +24,7 @@ import qualified Data.IntMap as I
 import qualified Data.Set as S
 import Text.Printf
 
-type KS = WriterT [String] (StateT (G, M.Map BDD Node, M.Map Node BDD, Int) BDDState)
+type KS = State G
 
 liftX :: BDDState a -> KS a
 liftX = lift . lift
@@ -84,28 +84,8 @@ mergeNodes (n1, n2) = do
       g' = insEdges es' $ delEdges des g
 
   putG g'
-  --liftX $ logBDD ("// before purge of " ++ show c2)
-  --purgeNode c2
+  purgeNode c2
   return n2
-    {-
-  g'' <- getG
-  lift $ tell [("// before merge " ++ show (c1, c2) ++ "\n" ++ showGraph g ++ "\n")]
-  lift $ tell [("// after merge " ++ show (c1, c2) ++ "\n" ++ showGraph g' ++ "\n")]
-  lift $ tell [("// after purge " ++ show c2 ++ "\n" ++ showGraph g'' ++ "\n")]
-  liftX $ logBDD ("after purge of " ++ show c2)
-  -}
-
-
-isWireOrInput n g = case l of
-                      Wire _ -> True
-                      Input _ -> True
-                      _ -> False
-  where Just l = lab g n
-
-isWire n g = case l of
-               Wire _ -> True
-               _ -> False
-  where Just l = lab g n
 
 purgeNode' :: Node -> KS ()
 purgeNode' n = do
@@ -214,7 +194,7 @@ reduceG g = g'
 
 checkEquivRed :: G -> G -> G -> Bool
 checkEquivRed g1 g2 gu =
-  o1_s == o2_s && o1_s == ou_s * 2
+  o1_s == o2_s && o1_s == ou_s
   where
     o1_s = length $ getOutputs g1
     o2_s = length $ getOutputs g2

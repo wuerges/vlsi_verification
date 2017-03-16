@@ -7,6 +7,9 @@ import Data.Graph.Inductive
 import Data.Graph.Inductive.Arbitrary
 import Debug.Trace
 
+import System.Process
+import System.IO
+
 import Graph
 import Kuelmann97
 import Util
@@ -15,12 +18,18 @@ newtype TestGraph = TG G
   deriving Show
 
 
+
+printGraph g =
+  withCreateProcess (proc "dot" ["-Tx11"])
+    { std_in = CreatePipe }
+    (\ (Just i) b d p -> do hPutStr i $ showGraph g
+                            hClose i
+                            waitForProcess p)
+
 cleanValEdges :: G -> G
-cleanValEdges =
-  gmap (\ctx -> case ctx of
-                  (_, 0, v, os) -> ([],0,v,os)
-                  (_, 1, v, os) -> ([],1,v,os)
-                  c -> c)
+cleanValEdges g =
+  delEdges [(a,b) | (a,b,_) <- inn g 0] $
+    delEdges [(a,b) | (a,b,_) <- inn g 1] g
 
 insZeroAndOne :: G -> G
 insZeroAndOne g = g1
@@ -33,10 +42,10 @@ insZeroAndOne g = g1
 
 instance Arbitrary TestGraph where
   arbitrary =
-    do NL (NME x) <- arbitrary
+    do NME (NL x) <- arbitrary
        return $ TG $
-         insZeroAndOne $
-           cleanValEdges x
+         cleanValEdges $
+           insZeroAndOne x
 
 --prop_equiv (TG g) = fst (equivG g g)
 
@@ -72,7 +81,7 @@ prop_renumber0 (TG g) = t1 && t2
 
 prop_join_graphs :: TestGraph -> Bool
 prop_join_graphs (TG g) =
-  order g * 2 == order gu + length (getInputs g)
+  order g' * 2 == order gu + length (getInputs g)
   where gu = joinGraphs g g
         g' = (fixSingleNodes g)
 

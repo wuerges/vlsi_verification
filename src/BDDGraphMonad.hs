@@ -1,6 +1,8 @@
 module BDDGraphMonad where
 
 import BDDGraph
+import Kuelmann97
+
 import Control.Monad.Writer
 import Data.Graph.Inductive
 import Control.Monad.State
@@ -13,7 +15,7 @@ data BDDStateD = S { graph :: T
                    , equals :: [(Node, Node)]
                    , ordering :: BDDOrdering }
 
-type BDDState = WriterT [String] (State BDDStateD)
+type BDDState = StateT BDDStateD KS
 
 logBDD :: String -> BDDState ()
 logBDD c = do
