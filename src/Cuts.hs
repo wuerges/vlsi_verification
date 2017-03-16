@@ -31,15 +31,15 @@ stopTest = do x <- liftX $ getSize
 
 -- | Checks the equivalence o a small set of nodes.
 -- | Marks the equivalent nodes to become inputs
-equivLimited :: G -> [Node] -> (G, [Node], [String])
-equivLimited g is = (g', eqs, log)
+equivLimited :: G -> (G, [Node], [String])
+equivLimited g = (g', eqs, log)
   where
     todo = mybfs g
-    ns = nodes g
     ((eqs, g'), log) =
-      runKS is ns g $ do m_eqs <- whileTodoM stopTest kuelmannNode todo
-                         m_g <- getG
-                         return (concat m_eqs, m_g)
+      runKS g $ do
+        m_eqs <- whileTodoM stopTest kuelmannNode todo
+        m_g <- getG
+        return (concat m_eqs, m_g)
 
 cutLevelsGraph :: G -> [Node] -> I.IntMap Node
 cutLevelsGraph g cuts = foldr doNode I.empty (mybfs g)
@@ -61,22 +61,19 @@ cutGraph is g = sg --gmap changeInput sg
     rem = dfs os (grev g)
     sg = subgraph rem g
 
+--rmdups = map head . group . sort
 
---type RetryState = State ([Node], G)
-
-rmdups = map head . group . sort
-
-retryEquivLimited :: [Node] -> G -> Bool
-retryEquivLimited is g  =
-  trace ("Retrying: " ++ show (size g', size g)) $
-    if (size g' >= size g) || checkResult g'
+retryEquivLimited :: G -> Bool
+retryEquivLimited g  =
+  trace ("Retrying: " ++ show (order g', order g)) $
+    if (order g' >= order g) || checkResult g'
        then checkResult g'
-       else retryEquivLimited (rmdups $ is ++ is') cg
- where (g', is', l) = equivLimited g is
+       else retryEquivLimited cg
+ where (g', is', l) = equivLimited g
        cg = cutGraph is' g'
 
 retryEquivLimited_2 :: Verilog -> Verilog -> (Either String Bool, [String])
 retryEquivLimited_2 v1 v2 = (Right r, [])
   where g = makeGraphV [v1, v2]
-        r = retryEquivLimited (getInputs g) g
+        r = retryEquivLimited  g
 

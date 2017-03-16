@@ -19,48 +19,39 @@ import qualified Data.Set as S
 
 -- | The graph that models the circuit after Nand Synthesis Model
 
-type G = Gr Val Bool
-type Ctx = Context Val Bool
+type G = Gr String Bool
+type Ctx = Context String Bool
 
 
-val :: G -> Node -> Val
-val g n = v
-  where
-    Just v = lab g n
+val :: G -> Node -> String
+val g n = maybe "<Node Not Found>" id (lab g n)
 
 type GState a = StateT G IdxState a
-
---type VG = Gr (NT, Bool) Bool
 
 -- | Converts a graph to a GraphViz format
 showGraph g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, (n, v), os)) g
 
 -- | Creates all the nodes of the Graph
---wireNodes :: Verilog -> Ctx
---wireNodes v = [([], n, (), []) | n <- names v]
-
--- | Embeds all the wires in the graphs as disconnected nodes
-
 startGraph :: G
-startGraph = mkGraph [(0, ValZero), (1, ValOne)] []
+startGraph = mkGraph [(0, show ValZero), (1, show ValOne)] []
 
-addNode :: (Val, Node) -> GState Int
-addNode (v, n) = do
+addNode :: String -> Node -> GState Int
+addNode v n = do
   g <- get
   unless (gelem n g) $
-    modify $ insNode (n,v)
+    modify $ insNode (n, v)
   return n
 
 
 newWire :: GState Int
 newWire = do
   n <- lift newIdx
-  addNode (Wire "<extra>", n)
+  addNode "<extra>" n
 
 getWire :: Val -> GState Int
 getWire w = do
   n <- lift $ getIdx w
-  addNode (w, n)
+  addNode (show w) n
 
 
 addEdge :: Bool -> (Node, Node) -> GState ()
@@ -70,9 +61,6 @@ addEdge b (n1, n2) =
 initGraph :: Verilog -> GState ()
 initGraph v = do
   mapM_ getWire (map Input $ _inputs v)
-
-trues  = repeat True
-falses = repeat False
 
 -- | Embeds a Function in the graph.
 embedF :: Function -> GState ()
@@ -90,24 +78,6 @@ embedF f@(Fun op os is) =
     where [i] = is
           [o] = os
 
--- | Negates an Adjacency list
-negateA :: Adj Bool -> Adj Bool
-negateA = map (first not)
-
--- | Negates all output edges of a ctx
-negateCtx (is, n, nv, os) = (is, n, nv, negateA os)
-
-
--- | Negates all output edges of a node
-{-
-negateV :: Node -> GState ()
-negateV n = do
-  g <-  get
-  let (mc, g') = match n g
-  case mc of
-    Just ctx -> put $ negateCtx ctx & g'
-    Nothing -> error "could not find vertex in negateV"
--}
 -- | Should insert a few edges in the graph.
 embedBuf :: Val -> [Val] -> GState ()
 embedBuf iw ows = do
@@ -232,7 +202,6 @@ makeGraphV' vs =
     mapM_ makeGraphV1 vs
     fixSingleNodes <$> get
 
-
 makeGraphV1 :: Verilog -> GState G
 makeGraphV1 v = do
   inputs <- mapM getWire (map Input $ _inputs v)
@@ -247,19 +216,12 @@ makeGraphV1 v = do
 
   lift resetIdx
   get
---fixSingleNodes $
-  --trace "Finished Embeddeding all functinos"  $
 
 -- | Calculates the nodes without input edges
-
-isInput (_, Input _) = True
-isInput _ = False
+isInput g n = indeg g n == 0
 
 getInputs :: G -> [Node]
-getInputs g = [n |
-  (n, v) <- labNodes g
-           , isInput (n, v) ]
-
+getInputs g = filter (isInput g) $ nodes g
 
 mybfs :: G -> [Node]
 mybfs = topsort
@@ -268,59 +230,7 @@ mybfs = topsort
 
 
 -- | Calculates the nodes without output edges
-isOutput (_, Output _) = True
-isOutput _ = False
+isOutput g n = outdeg g n == 0
 
 getOutputs :: G -> [Node]
-getOutputs g = [n |
-  (n, v) <- labNodes g
-          , isOutput (n, v) ]
-
--- | Renumber the nodes according solely to their inputs,
--- | so nodes with the same inputs will have the same id
--- | regardless of the previous.
-
-{-
-mybfs :: Gr a b -> [Int]
-mybfs g | isEmpty g = []
-        | otherwise = inputs g ++ (mybfs $ delNodes (inputs g) g)
-
--}
-
--- | simulates the circuit's behavior.
--- | Receives the graph of the circuit as input and a list of inputs, in order.
--- | produces the outputs, in order.
-{-
-simulate1 :: Context () Bool -> M.IntMap Bool -> M.IntMap Bool
-simulate1 = undefined
-{-
-simulate1 ([], n, (), _) m = case M.lookup n m of
-                                Just v ->  m
-                                Nothing -> error "Value for n should have been set."
-simulate1 (is, n, (), _) m = M.insert n v m
-  where
-    v = and $ [m M.! i /= vi | (vi, i) <- is]
--}
-
-simulate :: [(Int, Bool)] -> G -> [(Int, Bool)]
-simulate = undefined
-  {-
-simulate input_values g = [(o, m' M.! o) | o <- outputs g]
-  where
-    m  = M.fromList input_values
-    m' = ufold simulate1 m g
-    -}
-
-randomSimulateIO :: G -> IO [(Int, Bool)]
-randomSimulateIO g = do
-    let is = inputs g
-    rs <- replicateM (length is) randomIO
-    return $ simulate (zip is rs) g
-
-contexts :: G -> [Ctx]
-contexts g = map (context g) (topsort g) --ufold (:) [] g
-
-
-removeStuckAt0 :: [Int] -> G -> G
-removeStuckAt0 = undefined -- TODO
--}
+getOutputs g = filter (isOutput g) $ nodes g

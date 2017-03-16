@@ -24,9 +24,6 @@ import qualified Data.IntMap as I
 import qualified Data.Set as S
 import Text.Printf
 
---type KS a = WriterT String (State (G, M.Map BDD Node)) a
---
---type KS a = WriterT [Log] (State (G, M.Map BDD Node, M.Map Node BDD)) a
 type KS = WriterT [String] (StateT (G, M.Map BDD Node, M.Map Node BDD, Int) BDDState)
 
 liftX :: BDDState a -> KS a
@@ -62,19 +59,6 @@ getBDDfromEdge (o, _, v) =
   do bdd <- getBDD o
      if v then return bdd
           else liftY $ negateBDDM bdd
-          --else return bdd
-
-  --Just bdd <- getBDD o
-  --liftX $ negateBDD bdd
-  --bdd <- runMaybeT $ getBDD o
-  --return bdd
-  --negateBDD bdd
-  {-case mbdd of
-    Nothing -> return Nothing
-    Just bdd -> if v then return $ Just bdd
-                     else return $ Just bdd -}
-                       --do negBdd <- lift $ negateBDD bdd
-                             --return Just negBdd
 
 putG :: G -> KS ()
 putG g = do
@@ -132,7 +116,7 @@ purgeNode' n = do
 purgeNode :: Node -> KS ()
 purgeNode n = do
   g <- getG
-  when (gelem n g && isWireOrInput n g && outdeg g n == 0) $ do
+  when (gelem n g && isOutput g n) $ do
     --liftX $ bddPurge (B n)
     putG (delNode n g)
     mapM_ purgeNode [o | (o, _, _) <- inn g n]
@@ -172,39 +156,14 @@ kuelmannNode n1 =
     trace (printf "Current Node: %5d -- %5d/%5d -- BDD Size: %5d -- Cash Out %s" n1 c (size g) sz (show cash)) $ return rem
     return rem
 
-  {-
-kuelmannNode :: Node -> KS ()
-kuelmannNode n1 =
-  do (g, m1, m2) <- get
-     mbdd <- calcBDDNode n1
-     case mbdd of
-       Nothing -> return () --tell $ "Could not create BDD for " ++ show n1
-       Just bdd -> case M.lookup bdd m1 of
-                     Nothing -> storeBDD bdd n1
-                     Just n2 -> do
-                       --lift $ tell $ [(g, "BDDs match: "++ show (n1, n2) ++ " -> "++ show bdd)]
-                       nr <- mergeNodes n1 n2
-                       storeBDD bdd nr
--}
-{-
-calcBDDNode' n = do
-  mbdd <- calcBDDNode n
-  case mbdd of
-    Nothing -> return ()
-    Just bdd -> storeBDD bdd n
-  return mbdd
--}
-
 calcBDDNode :: Node -> MaybeT KS BDD
 calcBDDNode n = do
   g <- lift getG
   if indeg g n == 0
-     then case val g n of
-            Wire _ -> error "should not be empty"
-            Output _ -> error "should not be empty"
-            ValZero -> return bddZero
-            ValOne -> return bddOne
-            Input _ -> liftY $ initialBDD_M n
+     then case n of
+            0 -> return bddZero
+            1 -> return bddOne
+            _ -> liftY $ initialBDD_M n
 
      else do
        let inp_edges = (inn g n)
@@ -225,11 +184,12 @@ genOrdering g = f
              in o1 `compare` o2
 
 
-runKS :: [Node] -> [Node] -> G -> KS a -> (a, [String])
-runKS is ns g m = (r, kuelLog ++ bddLog)
-  --((a0, [String]), (BDDGraph.T, [(Node, Node)]))
+runKS :: G -> KS a -> (a, [String])
+runKS g m = (r, kuelLog ++ bddLog)
 
  where
+   is = getInputs g
+   ns = nodes g
    ord = genOrdering g
    (((r, kuelLog), bddLog), (bddGraphRes, eqs)) = runBDDState is ns ord $ flip evalStateT (g, M.empty, M.empty, 1) (runWriterT m)
 
@@ -238,7 +198,12 @@ equivKuelmann97_2 :: Verilog -> Verilog -> (Either String Bool, [String])
 equivKuelmann97_2 v1 v2 = (Right (checkResult g'), log)
   where g = makeGraphV [v1, v2]
         todo = mybfs g
-        inputs = getInputs g
-        ns = nodes g
-        (g', log) = runKS inputs ns g $ do mapM_ kuelmannNode todo
-                                           getG
+        (g', log) = runKS g $ do mapM_ kuelmannNode todo
+                                 getG
+
+equivG :: G -> (Bool, [String])
+equivG g = (checkResult g', log)
+  where (g', log) = runKS g $ do mapM_ kuelmannNode (mybfs g)
+                                 getG
+
+
