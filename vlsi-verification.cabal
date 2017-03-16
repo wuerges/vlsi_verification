@@ -21,6 +21,7 @@ library
                      , Equivalence
                      , Verilog    
                      , Graph      
+                     , GraphMonad
                      , Algo       
                      , BDD        
                      , BDDGraph

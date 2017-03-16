@@ -4,7 +4,7 @@ import Verilog
 import Data.Graph.Inductive
 import Data.Graph.Inductive.Basic
 import Data.Graph.Inductive.Query.DFS
-import BDDGraphMonad (getSize)
+import BDDGraphMonad
 import Kuelmann97
 import Graph
 import Control.Monad.State
@@ -26,20 +26,19 @@ whileTodoM test action (t:ts) = do
                return (r:rs)
        else return []
 
-stopTest = do x <- liftX $ getSize
+stopTest :: BDDState Bool
+stopTest = do x <- getSize
               return $ x < 10000
 
 -- | Checks the equivalence o a small set of nodes.
 -- | Marks the equivalent nodes to become inputs
-equivLimited :: G -> (G, [Node], [String])
-equivLimited g = (g', eqs, log)
+equivLimited :: G -> (G, [Node])
+equivLimited g = (g', cs)
   where
     todo = mybfs g
-    ((eqs, g'), log) =
-      runKS g $ do
-        m_eqs <- whileTodoM stopTest kuelmannNode todo
-        m_g <- getG
-        return (concat m_eqs, m_g)
+    (_, g', cs, _) =
+      runBS g $ do
+        whileTodoM stopTest kuelmannNode todo
 
 cutLevelsGraph :: G -> [Node] -> I.IntMap Node
 cutLevelsGraph g cuts = foldr doNode I.empty (mybfs g)
@@ -67,7 +66,7 @@ retryEquivLimited g  =
     if (order g' >= order g) || checkResult g'
        then checkResult g'
        else retryEquivLimited cg
- where (g', is', l) = equivLimited g
+ where (g', is') = equivLimited g
        cg = cutGraph is' g'
 
 retryEquivLimited_2 :: Verilog -> Verilog -> (Either String Bool, [String])

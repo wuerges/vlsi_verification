@@ -25,7 +25,7 @@ genNode = arbitrary `suchThat` (>1)
 
 instance Arbitrary S_BDD where
   arbitrary = do l <- listOf genNode
-                 return $ S_BDD (reserveNodes l startingG)
+                 return $ S_BDD (reserveNodes l startingT)
 
 -- Ideas for tests
 -- 1. Check if there is only 2 sons for every node. or 0.
@@ -43,7 +43,7 @@ newtype I_BDD = I_BDD T
 instance Arbitrary I_BDD where
   arbitrary = do S_BDD x <- arbitrary
                  is <- sublistOf $ [n | n <- nodes x, n > 1]
-                 return $ I_BDD (initialBDD' is x)
+                 return $ I_BDD x
 
 
 

@@ -37,8 +37,8 @@ showBDD g = showDot $ do
 
 type Ctx = Context V Bool
 
-startingG :: T
-startingG = mkGraph [(0,V (-1) True), (1, V (-1) True)] []
+startingT :: T
+startingT = mkGraph [(0,V (-1) True), (1, V (-1) True)] []
 
 reserveNodes :: [Node] -> T -> T
 reserveNodes ns =
@@ -49,8 +49,10 @@ initialBDD n g = ctx & g'
   where (Just (_, _, v, _), g') = match n g
         ctx = ([], n, V n True, [(True, 1), (False, 0)])
 
+ {-
 initialBDD' :: [Node] -> T -> T
 initialBDD' ns g = foldr initialBDD g ns
+  -}
 
 -- | Exported function
 bddOne = B 1
