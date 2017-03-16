@@ -178,11 +178,16 @@ embedXnor iws ow = do
   embedXor' is n
 
 
+
+
 -- | Replaces a node with only one input and one output with an edge.
 fixSingleNode :: Int -> G -> G
 fixSingleNode n g =  case match n g of
     (Just ctx, g') -> case ctx of
-       ([(vi, ni)], _, _, [(vo, no)]) -> insEdge (ni, no, not $ vi /= vo) g'
+       ([(vi, ni)], _, _, os) ->
+         let es = [(ni, no, not $ vi /= vo)
+                  | (vo, no) <- os]
+          in insEdges es g'
        _                               -> g
     (Nothing, _)  -> error "Could not match context in fixSingleNode"
 
@@ -263,31 +268,21 @@ offset g1 g2 = (max b1 b2 - min a1 a2) + 1
   where (a1, b1) = nodeRange g1
         (a2, b2) = nodeRange g2
 
-rnNode off n =
-  case n of
-    0 -> 0
-    1 -> 1
-    x -> x + off
+rnNode off n = n + off
 
 joinGraphs :: G -> G -> G
 joinGraphs g1 g2 =
-  insEdges es' $ insNodes ns' gu
+  fixSingleNodes $ insEdges es' gu
   where
     off = offset g1 g2
     g2' = renumberGraph off g2
 
-    gu = insEdges (labEdges g2') $
-         insNodes
-            (filter (fst . first notVal) $ labNodes g2')
-         g1
+    gu = mkGraph (rmdups $ labNodes g1 ++ labNodes g2') (labEdges g1 ++ labEdges g2')
 
-    is1 = filter notVal $ getInputs g1
-    is2 = filter notVal $ getInputs g2
+    is1 = getInputs g1
+    is2 = getInputs g2'
 
     is = zip (sort is1) (sort is2)
-    ns' = zip (newNodes (length is) gu)
-              (repeat "<extra input>")
-    es' = concat [[(a, b1, True), (a, b2, True)]
-      | ((a, _), (b1,b2)) <- zip ns' is]
+    es' = [(a, b, True) | (a,b) <- is]
 
 

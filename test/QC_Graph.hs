@@ -9,13 +9,34 @@ import Debug.Trace
 
 import Graph
 import Kuelmann97
+import Util
 
 newtype TestGraph = TG G
   deriving Show
 
+
+cleanValEdges :: G -> G
+cleanValEdges =
+  gmap (\ctx -> case ctx of
+                  (_, 0, v, os) -> ([],0,v,os)
+                  (_, 1, v, os) -> ([],1,v,os)
+                  c -> c)
+
+insZeroAndOne :: G -> G
+insZeroAndOne g = g1
+  where g0 = if gelem 0 g
+                then g
+                else insNode (0,"0") g
+        g1 = if gelem 1 g0
+                then g0
+                else insNode (1,"1") g0
+
 instance Arbitrary TestGraph where
-  arbitrary = do NL (NME x) <- arbitrary
-                 return $ TG x
+  arbitrary =
+    do NL (NME x) <- arbitrary
+       return $ TG $
+         insZeroAndOne $
+           cleanValEdges x
 
 --prop_equiv (TG g) = fst (equivG g g)
 
@@ -43,14 +64,24 @@ prop_node_range3 (TG g1) (TG g2) =
     regular = filter notVal (nodes g2')
 
 prop_renumber0 :: TestGraph -> Bool
-prop_renumber0 (TG g) =
-  renumberGraph 0 g == g
+prop_renumber0 (TG g) = t1 && t2
+  where
+    t1 = rmdups (labEdges g) == rmdups (labEdges r)
+    t2 = rmdups (labNodes g) == rmdups (labNodes r)
+    r = renumberGraph 0 g
+
+prop_join_graphs :: TestGraph -> Bool
+prop_join_graphs (TG g) =
+  order g * 2 == order gu + length (getInputs g)
+  where gu = joinGraphs g g
+        g' = (fixSingleNodes g)
 
 prop_self_equiv :: TestGraph -> Bool
-prop_self_equiv (TG g) =
-  trace ("TRACE: " ++ show gu ++  concat logs) r
+prop_self_equiv (TG g) = r
   where gu = joinGraphs g g
-        (r, logs) = equivG gu
+        --(r, logs) = equivG gu
+        red = reduceG gu
+        r = checkEquivRed g g red
 
 return []
 runTests = do

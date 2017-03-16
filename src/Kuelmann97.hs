@@ -85,7 +85,7 @@ mergeNodes (n1, n2) = do
 
   putG g'
   --liftX $ logBDD ("// before purge of " ++ show c2)
-  purgeNode c2
+  --purgeNode c2
   return n2
     {-
   g'' <- getG
@@ -206,4 +206,17 @@ equivG g = (checkResult g', log)
   where (g', log) = runKS g $ do mapM_ kuelmannNode (mybfs g)
                                  getG
 
+
+reduceG :: G -> G
+reduceG g = g'
+  where (g', log) = runKS g $ do mapM_ kuelmannNode (mybfs g)
+                                 getG
+
+checkEquivRed :: G -> G -> G -> Bool
+checkEquivRed g1 g2 gu =
+  o1_s == o2_s && o1_s == ou_s * 2
+  where
+    o1_s = length $ getOutputs g1
+    o2_s = length $ getOutputs g2
+    ou_s = length $ getOutputs gu
 
