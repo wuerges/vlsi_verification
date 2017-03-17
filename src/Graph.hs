@@ -16,6 +16,9 @@ import Debug.Trace
 import System.Random
 import qualified Data.Map as M
 import qualified Data.Set as S
+import System.Process
+import System.IO
+
 -- import qualified Data.IntMap as M
 
 -- | The graph that models the circuit after Nand Synthesis Model
@@ -29,8 +32,17 @@ val g n = maybe "<Node Not Found>" id (lab g n)
 
 type GState a = StateT G IdxState a
 
+dotty s =
+  withCreateProcess (proc "dot" ["-Tx11"])
+    { std_in = CreatePipe }
+    (\ (Just i) b d p -> do hPutStr i $ s
+                            hClose i
+                            waitForProcess p)
+
 -- | Converts a graph to a GraphViz format
-showGraph g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, (n, v), os)) g
+showGraph g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, n, os)) g
+
+dottyGraph g = dotty (showGraph g)
 
 -- | Creates all the nodes of the Graph
 startGraph :: G
@@ -183,13 +195,11 @@ embedXnor iws ow = do
 -- | Replaces a node with only one input and one output with an edge.
 fixSingleNode :: Int -> G -> G
 fixSingleNode n g =  case match n g of
-    (Just ctx, g') -> case ctx of
-       ([(vi, ni)], _, _, os) ->
-         let es = [(ni, no, not $ vi /= vo)
-                  | (vo, no) <- os]
-          in insEdges es g'
-       _                               -> g
     (Nothing, _)  -> error "Could not match context in fixSingleNode"
+    (Just ctx, g') -> case ctx of
+       ([(vi, ni)], _, _, [(vo, no)]) ->
+         insEdge (ni, no, not $ vi /= vo) g'
+       _                               -> g
 
 -- | Cleans up graph after adding extra single nodes
 fixSingleNodes g = --trace ("fix singles ")

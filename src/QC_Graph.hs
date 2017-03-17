@@ -17,14 +17,11 @@ import Util
 newtype TestGraph = TG G
   deriving Show
 
-
-
-printGraph g =
-  withCreateProcess (proc "dot" ["-Tx11"])
-    { std_in = CreatePipe }
-    (\ (Just i) b d p -> do hPutStr i $ showGraph g
-                            hClose i
-                            waitForProcess p)
+removeCycles :: G -> G
+removeCycles g = mkGraph ns es
+  where
+    ns = filter (\(n, _) -> n >= 0) $ labNodes g
+    es = filter (\(a, b,_) -> b > a) $ labEdges g
 
 cleanValEdges :: G -> G
 cleanValEdges g =
@@ -42,10 +39,11 @@ insZeroAndOne g = g1
 
 instance Arbitrary TestGraph where
   arbitrary =
-    do NME (NL x) <- arbitrary
+    do NME x <- arbitrary
        return $ TG $
-         cleanValEdges $
-           insZeroAndOne x
+         removeCycles $
+           cleanValEdges $
+             insZeroAndOne x
 
 --prop_equiv (TG g) = fst (equivG g g)
 

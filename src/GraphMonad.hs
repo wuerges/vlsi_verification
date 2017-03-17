@@ -22,20 +22,15 @@ type KS = State G
 -- | All the sucessors are moved to the node that remains.
 -- | returns the remaining node
 mergeNodes :: (Node, Node) -> KS ()
-mergeNodes (c1, c2) =
-  let (n1, n2) =
-        if elem c2 [0,1]
-           then (c2, c1)
-           else (c1, c2)
-        in do
-          g <- get
-          let es = out g n2 -- getting the edges of n2
-              --preparing to add the edges to n1
-              es' = [(n1, d, l) | (o, d, l) <- es]
-              g' = insEdges es' $ g
-          put g'
-          purgeNode n1
-          purgeNode' n2
+mergeNodes (n1, n2) = do
+    g <- get
+    let es = out g n2 -- getting the edges of n2
+        --preparing to add the edges to n1
+        es' = [(n1, d, l) | (o, d, l) <- es]
+        g' = insEdges es' $ g
+    put $ delEdge (n1, n1) g'
+    --purgeNode n1
+    purgeNode' n2
 
 purgeNode' :: Node -> KS ()
 purgeNode' n = do
@@ -46,7 +41,7 @@ purgeNode' n = do
 purgeNode :: Node -> KS ()
 purgeNode n = do
   g <- get
-  when (gelem n g && isOutput g n) $ do
+  when (n /= 0 && n /= 1 && gelem n g && isOutput g n && not (isInput g n)) $ do
     put (delNode n g)
     mapM_ purgeNode [o | (o, _, _) <- inn g n]
 

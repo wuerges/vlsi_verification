@@ -10,6 +10,7 @@ import Data.Ord
 import Data.List
 import Data.Maybe
 import qualified Data.IntMap as M
+import Graph
 
 
 newtype BDD = B Int
@@ -21,6 +22,8 @@ data V =  V { input :: Node
 
 type T = Gr V Bool
 type BDDOrdering = (Node -> Node -> Ordering)
+
+dottyBDD t = dotty (showBDD t)
 
 labelN (n, v) = [("label", label)] ++ shape
   where label = show n ++ "," ++ show (input v)

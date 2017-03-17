@@ -9,6 +9,7 @@ import Data.Graph.Inductive
 import Control.Monad.State
 import Data.Ord
 import Data.List
+import Debug.Trace
 import Data.Maybe
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Maybe
@@ -22,12 +23,24 @@ data BDDStateD = S { graph :: T
 type BDDState = StateT BDDStateD KS
 
 
-equate :: Node -> Node -> BDDState ()
-equate n1 n2 = do
-  lift $ mergeNodes (n1, n2)
-  addCut n1
-  addCut n2
+equate :: Node -> Node -> BDDState Node
+equate n1 n2 = trace ("Equating " ++ show (n1, n2)) $
+  if n1 == n2
+     then return n1
+     else case (n1, n2) of
+       (1, 0) -> error $ "this should not be possible"
+       (0, 1) -> error $ "this should not be possible"
+       (0, x) -> lift (mergeNodes (0, x)) >>
+         addCut x >> return 0
 
+       (x, 0) -> lift (mergeNodes (0, x)) >>
+         addCut x >> return 0
+       (1, x) -> lift (mergeNodes (0, x)) >>
+         addCut x >> return 1
+       (x, 1) -> lift (mergeNodes (0, x)) >>
+         addCut x >> return 1
+       (x, y) -> lift (mergeNodes (x, y)) >>
+         addCut y >> return y
 
 getG :: BDDState G
 getG = lift get
@@ -45,14 +58,14 @@ genOrdering g = f
 
 calcBDDNode :: Node -> BDDState ()
 calcBDDNode n = do
-  t <- getT
-  if indeg t n == 0
+  g <- getG
+  if indeg g n == 0
      then case n of
             0 -> return $ B 0
             1 -> return $ B 1
             _ -> initialBDD_M n
 
-     else do is <- mapM getBDDfromEdge (inn t n)
+     else do is <- mapM getBDDfromEdge (inn g n)
              bddAndMany (Just n) is
   return ()
 
@@ -103,7 +116,12 @@ addCut n = do
 
 bddAndMany :: Maybe Node -> [BDD] -> BDDState BDD
 bddAndMany n [] = error $ "cannot conjoin nothing"
-bddAndMany n [b] = bddAnd n (B 1) b
+bddAndMany n [B b] =
+  case n of
+    Nothing -> return $ B b
+    Just x  -> do r <- equate x b
+                  return $ B r
+  --return b --bddAnd n (B 1) b
 bddAndMany n [a, b] = bddAnd n a b
 bddAndMany n (a:os) = do
   r <- bddAndMany Nothing os
@@ -196,7 +214,7 @@ mergeNodes1 top bot = do
       node_keep = min top bot
       r_keep = r_top || r_bot
 
-  when (r_top && r_bot) $ equate top bot
+  when (r_top && r_bot) $ equate top bot >> return ()
   modifyG $ const g'''
 
 
@@ -236,7 +254,7 @@ moveParents n1 n2 = do
       (Just (is_n2, _, V _   r_n2, _    ), g'') = match n2 g'
       g''' = (rmdups $ is_n1 ++ is_n2, min n1 n2, V inp (r_n1 || r_n2), os_n1) & g''
 
-  when (r_n1 && r_n2) $ equate n1 n2
+  when (r_n1 && r_n2) $ equate n1 n2 >> return ()
   modifyG $ const g'''
 
 reduceGroup :: [BDD] -> BDDState ()

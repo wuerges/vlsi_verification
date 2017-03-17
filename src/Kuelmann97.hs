@@ -40,9 +40,15 @@ equivVerilog v1 v2 = equivG g
 equivG :: G -> Either String Bool
 equivG g = Right $ checkResult (reduceG g)
 
+reduceGT :: G -> (G, T)
+reduceGT g = (g', t)
+  where (t, g', _, _) = runBS g $ do mapM_ kuelmannNode (mybfs g)
+                                     reduceAll
+
 reduceG :: G -> G
 reduceG g = g'
-  where (_, g', _, _) = runBS g $ mapM_ kuelmannNode (mybfs g)
+  where (_, g', _, _) = runBS g $ do mapM_ kuelmannNode (mybfs g)
+                                     reduceAll
 
 checkEquivRed :: G -> G -> G -> Bool
 checkEquivRed g1 g2 gu =
