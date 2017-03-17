@@ -7,9 +7,6 @@ import Data.Graph.Inductive
 import Data.Graph.Inductive.Arbitrary
 import Debug.Trace
 
-import System.Process
-import System.IO
-
 import Graph
 import Kuelmann97
 import Util
