@@ -104,8 +104,8 @@ runBS g op = r
 getT :: BDDState T
 getT =  graph <$> get
 
-modifyG :: (T -> T) -> BDDState ()
-modifyG f = do
+modifyT :: (T -> T) -> BDDState ()
+modifyT f = do
   s <- get
   put $ s { graph = f (graph s) }
 
@@ -116,11 +116,16 @@ addCut n = do
 
 bddAndMany :: Maybe Node -> [BDD] -> BDDState BDD
 bddAndMany n [] = error $ "cannot conjoin nothing"
-bddAndMany n [B b] =
-  case n of
+bddAndMany n [B b] = do
+  t <- getT
+  let (d, t') = dupNode n b t
+  modifyT $ const t'
+  setSons d b b
+  return $ B d
+    {-case n of
     Nothing -> return $ B b
-    Just x  -> do r <- equate x b
-                  return $ B r
+    Just x  -> do r <- equate b x
+                  return $ B r -}
   --return b --bddAnd n (B 1) b
 bddAndMany n [a, b] = bddAnd n a b
 bddAndMany n (a:os) = do
@@ -149,7 +154,7 @@ newParentM :: Maybe Node -> Node -> (Node, Node) -> BDDState BDD
 newParentM repr orig (l, r) = do
   g <- getT
   let (bdd', g') = newParent repr orig (l,r) g
-  modifyG $ const g'
+  modifyT $ const g'
   return bdd'
 
 bddAnd :: Maybe Node -> BDD -> BDD -> BDDState BDD
@@ -194,7 +199,7 @@ bddAnd repr (B n1) (B n2) = do
       newParentM repr n1 (z, o)
 
 setSons n z o =
-  modifyG $ insEdges [(n, z, False), (n, o, True)]
+  modifyT $ insEdges [(n, z, False), (n, o, True)]
 
 reduce1 :: BDD -> BDDState ()
 reduce1 (B 0) = return ()
@@ -202,7 +207,7 @@ reduce1 (B 1) = return ()
 reduce1 (B n) = do
   (z, o) <- flip getSons n <$> getT
   when (z == o) $ do
-    modifyG $ delEdges [(n,z), (n,o)]
+    modifyT $ delEdges [(n,z), (n,o)]
     mergeNodes1 n z
 
 mergeNodes1 :: Node -> Node -> BDDState ()
@@ -215,7 +220,7 @@ mergeNodes1 top bot = do
       r_keep = r_top || r_bot
 
   when (r_top && r_bot) $ equate top bot >> return ()
-  modifyG $ const g'''
+  modifyT $ const g'''
 
 
 reduce2' b1 b2 = reduce2 (b1, b2)
@@ -255,7 +260,7 @@ moveParents n1 n2 = do
       g''' = (rmdups $ is_n1 ++ is_n2, min n1 n2, V inp (r_n1 || r_n2), os_n1) & g''
 
   when (r_n1 && r_n2) $ equate n1 n2 >> return ()
-  modifyG $ const g'''
+  modifyT $ const g'''
 
 reduceGroup :: [BDD] -> BDDState ()
 reduceGroup [] = return ()
@@ -292,7 +297,7 @@ reduceAll = do
 
 initialBDD_M :: Node -> BDDState BDD
 initialBDD_M n =
-  do modifyG $ initialBDD n
+  do modifyT $ initialBDD n
      return $ B n
 
 negateBDDM b = do
