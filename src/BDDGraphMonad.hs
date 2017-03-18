@@ -22,25 +22,26 @@ data BDDStateD = S { graph :: T
 
 type BDDState = StateT BDDStateD KS
 
+getRepr :: Node -> BDDState Bool
+getRepr n = do
+  t <- getT
+  return $ maybe False repr (lab t n)
+
+mergeNodesT :: Node -> Node -> BDDState Node
+mergeNodesT n1 n2 = do
+  lift (mergeNodes (n1, n2))
+  when (n2 /= 0 && n2 /= 1) $ addCut n2
+  return n2
 
 equate :: Node -> Node -> BDDState Node
-equate n1 n2 = trace ("Equating " ++ show (n1, n2)) $
+equate n1 n2 = trace ("Equating " ++ show (n1, n2)) $ do
+  r1 <- getRepr n1
   if n1 == n2
      then return n1
-     else case (n1, n2) of
-       (1, 0) -> error $ "this should not be possible"
-       (0, 1) -> error $ "this should not be possible"
-       (0, x) -> lift (mergeNodes (0, x)) >>
-         addCut x >> return 0
-
-       (x, 0) -> lift (mergeNodes (0, x)) >>
-         addCut x >> return 0
-       (1, x) -> lift (mergeNodes (0, x)) >>
-         addCut x >> return 1
-       (x, 1) -> lift (mergeNodes (0, x)) >>
-         addCut x >> return 1
-       (x, y) -> lift (mergeNodes (x, y)) >>
-         addCut y >> return y
+     else
+       if r1
+          then mergeNodesT n1 n2
+          else mergeNodesT n2 n1
 
 getG :: BDDState G
 getG = lift get
@@ -116,22 +117,11 @@ addCut n = do
 
 bddAndMany :: Maybe Node -> [BDD] -> BDDState BDD
 bddAndMany n [] = error $ "cannot conjoin nothing"
-bddAndMany n [B b] = do
-  t <- getT
-  let (d, t') = dupNode n b t
-  modifyT $ const t'
-  setSons d b b
-  return $ B d
-    {-case n of
-    Nothing -> return $ B b
-    Just x  -> do r <- equate b x
-                  return $ B r -}
-  --return b --bddAnd n (B 1) b
+bddAndMany n [B b] = bddAnd n (B b) (B 1)
 bddAndMany n [a, b] = bddAnd n a b
 bddAndMany n (a:os) = do
   r <- bddAndMany Nothing os
   bddAnd n a r
-
 
 bddAndRepr :: Node -> BDD -> BDD ->  BDDState BDD
 bddAndRepr n b1 b2 = do
@@ -141,13 +131,7 @@ bddAndRepr n b1 b2 = do
 
 getOrdering :: Node -> Node -> BDDState Ordering
 getOrdering n1 n2 = do
-  {-
-  return $ n1 `compare` n2
-  --traceM $ " get Ordering " ++ show (n1, n2)
-  -}
   m <- ordering <$> get
-  --let Just o1 = M.lookup n1 m
-  --    Just o2 = M.lookup n2 m
   return $ n1 `m` n2
 
 newParentM :: Maybe Node -> Node -> (Node, Node) -> BDDState BDD
@@ -159,21 +143,19 @@ newParentM repr orig (l, r) = do
 
 bddAnd :: Maybe Node -> BDD -> BDD -> BDDState BDD
 
-bddAnd Nothing (B 0) _ =
-  return $ B 0
+-- Trivial cases when there is no representative
+bddAnd Nothing (B 0) _     = return $ B 0
+bddAnd Nothing (B 1) (B b) = return $ B b
 
-bddAnd (Just x) (B 0) _ = do
-  equate 0 x
-  return $ B 0
+-- When there is a representative it must be
+-- added to the BDD no matter the cost.
+bddAnd (Just x) (B 0) _ =
+  newParentM (Just x) 0 (0, 0)
+
+bddAnd (Just x) (B 1) (B b) =
+  newParentM (Just x) b (b, b)
 
 bddAnd repr _ (B 0) = bddAnd repr (B 0) undefined
-
-bddAnd repr (B 1) (B 1) = return $ B 1
-
-bddAnd repr (B 1) (B b) = do
-  (l, r) <- flip  getSons b <$> getT
-  newParentM repr b (l, r)
-
 bddAnd repr b (B 1) = bddAnd repr (B 1) b
 
 bddAnd repr (B n1) (B n2) = do
