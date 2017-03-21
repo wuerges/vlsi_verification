@@ -27,7 +27,8 @@ getRepr n = do
   return $ maybe False repr (lab t n)
 
 equate :: Node -> Node -> KS ()
-equate n1 n2 = trace ("Equating " ++ show (n1, n2)) $ do
+equate n1 n2 = --trace ("Equating " ++ show (n1, n2)) $
+  do
   --r1 <- getRepr n1
   --r2 <- getRepr n2
     --when (r1 && r2) $ do

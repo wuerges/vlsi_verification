@@ -27,6 +27,7 @@ genNode = arbitrary `suchThat` (>1)
 instance Arbitrary S_BDD where
   arbitrary = do l <- listOf genNode
                  return $ S_BDD (reserveNodes l startingT)
+  shrink  _ = []
 
 -- Ideas for tests
 -- 1. Check if there is only 2 sons for every node. or 0.

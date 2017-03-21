@@ -42,7 +42,8 @@ mergeNodes' (n1, n2) = do
         g' = insEdges es' $ g
     putG $ delEdge (n1, n1) g'
     --purgeNode n1
-    traceShow ("purge", n2) $ purgeNode' n2
+    --traceShow ("purge", n2) $
+    purgeNode' n2
 
 purgeNode' :: Node -> KS ()
 purgeNode' n = do
