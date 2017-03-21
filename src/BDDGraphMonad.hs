@@ -1,6 +1,7 @@
 module BDDGraphMonad where
 
 import Graph
+import GraphMonad
 import BDDGraph
 import BDDGraphCommon
 
@@ -27,11 +28,11 @@ getRepr n = do
 
 equate :: Node -> Node -> KS ()
 equate n1 n2 = trace ("Equating " ++ show (n1, n2)) $ do
-  r1 <- getRepr n1
-  r2 <- getRepr n2
-  unless (n1 == n2) $
-    when (r1 && r2) $
+  --r1 <- getRepr n1
+  --r2 <- getRepr n2
+    --when (r1 && r2) $ do
       modify $ \s -> s { equals = (n1, n2):(equals s) }
+      mergeNodes n1 n2
 
 genOrdering :: G -> BDDOrdering
 genOrdering g = f
@@ -161,10 +162,12 @@ reduce1 :: BDD -> KS ()
 reduce1 (B 0) = return ()
 reduce1 (B 1) = return ()
 reduce1 (B n) = do
-  (z, o) <- flip getSons n <$> getT
-  when (z == o) $ do
-    modifyT $ delEdges [(n,z), (n,o)]
-    mergeNodes1 n z
+  t <- getT
+  when (gelem n t) $ do
+    let (z, o) = getSons t n
+    when (z == o) $ do
+      --modifyT $ delEdges [(n,z), (n,o)]
+      mergeNodes1 n z
 
 mergeNodes1 :: Node -> Node -> KS ()
 mergeNodes1 top bot = do
@@ -201,7 +204,9 @@ moveParents n1 n2 = do
   g <- getT
   let (Just (is_n1, _, V inp r_n1, os_n1), g') = match n1 g
       (Just (is_n2, _, V _   r_n2, _    ), g'') = match n2 g'
-      g''' = (rmdups $ is_n1 ++ is_n2, min n1 n2, V inp (r_n1 || r_n2), os_n1) & g''
+      g''' = (rmdups $ is_n1 ++ is_n2, node_keep, V inp r_keep, os_n1) & g''
+      node_keep = min n1 n2
+      r_keep = r_n1 || r_n2
   modifyT $ const g'''
   when (r_n1 && r_n2) $ equate n1 n2 >> return ()
 
