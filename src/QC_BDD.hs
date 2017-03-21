@@ -7,6 +7,7 @@ import Data.Graph.Inductive
 
 import BDDGraph
 import BDDGraphMonad
+import BDDGraphCommon
 
 instance Arbitrary V where
   arbitrary = do

@@ -1,6 +1,7 @@
 --module BDDGraph (BDD, initialBDD, negateBDD ) where
 module BDDGraph where
 
+import BDDGraphCommon
 import Text.Dot
 import Debug.Trace
 import Data.Graph.Inductive
@@ -11,17 +12,6 @@ import Data.List
 import Data.Maybe
 import qualified Data.IntMap as M
 import Graph
-
-
-newtype BDD = B Int
-  deriving (Eq, Ord, Show)
-
-data V =  V { input :: Node
-            , repr :: Bool }
-  deriving Show
-
-type T = Gr V Bool
-type BDDOrdering = (Node -> Node -> Ordering)
 
 dottyBDD t = dotty (showBDD t)
 
@@ -38,7 +28,6 @@ showBDD g = showDot $ do
     \(o, d, t) -> edge (userNodeId o) (userNodeId d) (if t then [] else [("style","dotted")])
   mapM_ (same . map userNodeId) (layers g)
 
-type Ctx = Context V Bool
 
 startingT :: T
 startingT = mkGraph [(0,V (-1) True), (1, V (-1) True)] []

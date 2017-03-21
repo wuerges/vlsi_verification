@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module GraphMonad where
 
+import BDDGraphCommon
 import Graph
 import Control.Monad.State
 import Control.Monad.Writer
@@ -15,8 +16,6 @@ import qualified Data.IntMap as I
 import qualified Data.Set as S
 import Text.Printf
 
-import BDDGraphMonad
-
 modifyG :: (G -> G) -> KS ()
 modifyG f = modify $ \s -> s { graph = f (graph s) }
 
@@ -28,13 +27,14 @@ putG g = modifyG $ const g
 -- | All the sucessors are moved to the node that remains.
 -- | returns the remaining node
 
-mergeNodesT :: Node -> Node -> KS ()
-mergeNodesT n1 n2 = do
-  mergeNodes (n1, n2)
-  when (n2 /= 0 && n2 /= 1) $ addCut n2
+mergeNodes :: Node -> Node -> KS ()
+mergeNodes n1 n2 = do
+  when ((n2 /= 0 && n2 /= 1) && n1 /= n2) $
+    mergeNodes' (min n1 n2, max n1 n2)
+  --when (n2 /= 0 && n2 /= 1) $ addCut n2
 
-mergeNodes :: (Node, Node) -> KS ()
-mergeNodes (n1, n2) = do
+mergeNodes' :: (Node, Node) -> KS ()
+mergeNodes' (n1, n2) = do
     g <- getG
     let es = out g n2 -- getting the edges of n2
         --preparing to add the edges to n1

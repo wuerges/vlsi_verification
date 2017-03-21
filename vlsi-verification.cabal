@@ -22,6 +22,7 @@ library
                      , Verilog    
                      , Graph      
                      , GraphMonad
+                     , BDDGraphCommon
                      , Algo       
                      , BDD        
                      , BDDGraph

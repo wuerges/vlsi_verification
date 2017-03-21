@@ -2,6 +2,7 @@ module BDDGraphMonad where
 
 import Graph
 import BDDGraph
+import BDDGraphCommon
 
 import Control.Monad.Writer
 import Data.Graph.Inductive
@@ -14,23 +15,15 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Maybe
 import qualified Data.IntMap as I
 
-data KS_D = S { bdd :: T
-              , ordering :: BDDOrdering
-              , count :: Int
-              , graph :: G
-              , equals :: [(Node, Node)]
-              , cuts :: [Node] }
+data Op = Op Node Node
 
-type KS = State KS_D
-
-getG :: KS G
-getG = graph <$> get
+mkOp :: Node -> Node -> Op
+mkOp a b = Op (min a b) (max a b)
 
 getRepr :: Node -> KS Bool
 getRepr n = do
   t <- getT
   return $ maybe False repr (lab t n)
-
 
 equate :: Node -> Node -> KS ()
 equate n1 n2 = trace ("Equating " ++ show (n1, n2)) $ do
@@ -42,9 +35,7 @@ equate n1 n2 = trace ("Equating " ++ show (n1, n2)) $ do
 
 genOrdering :: G -> BDDOrdering
 genOrdering g = f
-  where --is = S.fromList $ getInputs g
-        --values = filter (\e -> S.member e is) (mybfs g)
-        values = mybfs g
+  where values = mybfs g
         m = I.fromList $ zip values [1..]
         f n1 n2 =
             let Just o1 = I.lookup n1 m
@@ -80,15 +71,6 @@ getBDDfromEdge (o, _, v) =
 withBDD :: T -> (KS a) -> T
 withBDD t op =
   evalState (op >> getT) $ S t compare 0 (empty :: G) [] []
-
- {-
-  data KS_D = S { bdd :: T
-  , ordering :: BDDOrdering
-  , count :: Int
-  , graph :: G
-  , equals :: [(Node, Node)]
-  , cuts :: [Node] }
-  -}
 
 runKS :: G -> (KS a) -> (T, G, a)
 runKS g op = r'
@@ -189,11 +171,12 @@ mergeNodes1 top bot = do
   g <- getT
   let (Just (is_top, _, V _   r_top, _), g') = match top g
       (Just (is_bot, _, V inp r_bot, os_bot), g'') = match bot g'
-      g''' = (rmdups $ is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & g'' -- TODO must pay more attention here in the future
+      g''' = (rmdups $ is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & g''
+      -- TODO must pay more attention here in the future
       node_keep = min top bot
       r_keep = r_top || r_bot
 
-  when (r_top && r_bot) $ equate top bot >> return ()
+  equate top bot
   modifyT $ const g'''
 
 

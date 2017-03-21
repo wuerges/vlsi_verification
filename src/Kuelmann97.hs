@@ -7,6 +7,7 @@ import Graph
 import GraphMonad
 import BDDGraph
 import BDDGraphMonad
+import BDDGraphCommon
 
 import Control.Monad.State
 import Control.Monad.Writer
@@ -21,6 +22,12 @@ import qualified Data.IntMap as I
 
 import qualified Data.Set as S
 import Text.Printf
+
+cashOut :: KS [(Node, Node)]
+cashOut = do
+  es <- equals <$> get
+  modify $ \s -> s { equals = [] }
+  return es
 
 kuelmannNode :: Node -> KS ()
 kuelmannNode n1 =

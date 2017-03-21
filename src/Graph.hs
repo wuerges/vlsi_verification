@@ -1,5 +1,7 @@
 module Graph where
 
+import BDDGraphCommon
+
 import Control.Monad
 import Control.Monad.State
 import Index
@@ -22,9 +24,6 @@ import System.IO
 -- import qualified Data.IntMap as M
 
 -- | The graph that models the circuit after Nand Synthesis Model
-
-type G = Gr String Bool
-type Ctx = Context String Bool
 
 
 val :: G -> Node -> String

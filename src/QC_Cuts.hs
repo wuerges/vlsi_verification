@@ -9,6 +9,7 @@ import Debug.Trace
 
 import qualified Data.IntMap as I
 
+import BDDGraphCommon
 import Graph
 import QC_Graph (TestGraph(TG))
 import Cuts
