@@ -46,6 +46,7 @@ instance Arbitrary I_BDD where
   arbitrary = do S_BDD x <- arbitrary
                  is <- sublistOf $ [n | n <- nodes x, n > 1]
                  return $ I_BDD x
+  shrink  _ = []
 
 
 

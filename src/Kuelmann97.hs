@@ -36,12 +36,18 @@ kuelmannNode n1 =
     o <- order <$> getG
     c <- getCount
     sz <- getSize
-    traceM (printf "Current Node: %5d -- %5d/%5d -- BDD Size: %5d" n1 c o sz)
+    --traceM (printf "Current Node: %5d -- %5d/%5d -- BDD Size: %5d" n1 c o sz)
     return ()
 
 equivVerilog :: Verilog -> Verilog -> Either String Bool
-equivVerilog v1 v2 = equivG g
-  where g = makeGraphV [v1, v2]
+equivVerilog v1 v2 = Right $ checkEquivRed g1 g2 red
+  where g1 =  makeGraphV [v1]
+        g2 =  makeGraphV [v2]
+        gu = joinGraphs g1 g2
+        red = reduceG gu
+
+
+
 
 
 equivG :: G -> Either String Bool

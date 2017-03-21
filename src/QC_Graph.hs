@@ -15,6 +15,11 @@ import Util
 newtype TestGraph = TG G
   deriving Show
 
+ {-
+instance Show TestGraph where
+  show (TG g) = show ("TG", g, labNodes g, labEdges g, nodes g, edges g)
+-}
+
 removeCycles :: G -> G
 removeCycles g = mkGraph ns es
   where
@@ -35,10 +40,15 @@ insZeroAndOne g = g1
                 then g0
                 else insNode (1,"1") g0
 
+cleanDupEdges :: G -> G
+cleanDupEdges g =
+  mkGraph (labNodes g) (rmdups $ labEdges g)
+
 instance Arbitrary TestGraph where
+  shrink _ = []
   arbitrary =
-    do NME x <- arbitrary
-       return $ TG $
+    do x <- arbitrary
+       return $ TG $ cleanDupEdges $
          removeCycles $
            cleanValEdges $
              insZeroAndOne x
