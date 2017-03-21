@@ -240,9 +240,8 @@ moveParents n1 n2 = do
   let (Just (is_n1, _, V inp r_n1, os_n1), g') = match n1 g
       (Just (is_n2, _, V _   r_n2, _    ), g'') = match n2 g'
       g''' = (rmdups $ is_n1 ++ is_n2, min n1 n2, V inp (r_n1 || r_n2), os_n1) & g''
-
-  when (r_n1 && r_n2) $ equate n1 n2 >> return ()
   modifyT $ const g'''
+  when (r_n1 && r_n2) $ equate n1 n2 >> return ()
 
 reduceGroup :: [BDD] -> BDDState ()
 reduceGroup [] = return ()

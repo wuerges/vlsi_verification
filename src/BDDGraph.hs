@@ -121,7 +121,11 @@ ginput :: (Node, V) -> Node
 ginput (_,v) = input v
 
 layers :: T -> [[Node]]
-layers = map (map fst) . sortAndGroupBy ginput . filter (\x -> ginput x > 0) . labNodes
+--layers = map (map fst) . sortAndGroupBy ginput . filter (\x -> ginput x > 0) . labNodes
+layers t = map (map fst) .
+  sortAndGroupBy ginput .
+    filter (\(n, _) -> outdeg t n > 0) .
+      labNodes $ t
 
 rmdups :: (Ord a, Eq a) => [a] -> [a]
 rmdups = map head . group . sort
