@@ -22,7 +22,7 @@ import qualified Data.IntMap as I
 import qualified Data.Set as S
 import Text.Printf
 
-kuelmannNode :: Node -> BDDState ()
+kuelmannNode :: Node -> KS ()
 kuelmannNode n1 =
   do
     calcBDDNode n1
@@ -42,13 +42,13 @@ equivG g = Right $ checkResult (reduceG g)
 
 reduceGT :: G -> (G, T)
 reduceGT g = (g', t)
-  where (t, g', _, _) = runBS g $ do mapM_ kuelmannNode (mybfs g)
-                                     reduceAll
+  where (t, g', _) = runKS g $ do mapM_ kuelmannNode (mybfs g)
+                                  reduceAll
 
 reduceG :: G -> G
 reduceG g = g'
-  where (_, g', _, _) = runBS g $ do mapM_ kuelmannNode (mybfs g)
-                                     reduceAll
+  where (_, g', _) = runKS g $ do mapM_ kuelmannNode (mybfs g)
+                                  reduceAll
 
 checkEquivRed :: G -> G -> G -> Bool
 checkEquivRed g1 g2 gu =

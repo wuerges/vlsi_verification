@@ -15,39 +15,51 @@ import qualified Data.IntMap as I
 import qualified Data.Set as S
 import Text.Printf
 
-type KS = State G
+import BDDGraphMonad
+
+modifyG :: (G -> G) -> KS ()
+modifyG f = modify $ \s -> s { graph = f (graph s) }
+
+putG :: G -> KS ()
+putG g = modifyG $ const g
 
 -- | Merges 2 nodes in the graph.
 -- | The left one is removed and the right one is mantained
 -- | All the sucessors are moved to the node that remains.
 -- | returns the remaining node
+
+mergeNodesT :: Node -> Node -> KS ()
+mergeNodesT n1 n2 = do
+  mergeNodes (n1, n2)
+  when (n2 /= 0 && n2 /= 1) $ addCut n2
+
 mergeNodes :: (Node, Node) -> KS ()
 mergeNodes (n1, n2) = do
-    g <- get
+    g <- getG
     let es = out g n2 -- getting the edges of n2
         --preparing to add the edges to n1
         es' = [(n1, d, l) | (o, d, l) <- es]
         g' = insEdges es' $ g
-    put $ delEdge (n1, n1) g'
+    putG $ delEdge (n1, n1) g'
     --purgeNode n1
     purgeNode' n2
 
 purgeNode' :: Node -> KS ()
 purgeNode' n = do
-  g <- get
-  modify $ delNode n
+  g <- getG
+  modifyG $ delNode n
   mapM_ purgeNode [o | (o, _, _) <- inn g n]
 
 purgeNode :: Node -> KS ()
 purgeNode n = do
-  g <- get
+  g <- getG
   when (n /= 0 && n /= 1 && gelem n g && isOutput g n && not (isInput g n)) $ do
-    put (delNode n g)
+    putG (delNode n g)
     mapM_ purgeNode [o | (o, _, _) <- inn g n]
 
-runKS :: G -> KS a -> a
-runKS g m = r
- where
-   r = flip evalState g m
 
+addCut :: Node -> KS ()
+addCut n = do
+  s <- get
+  put $ s { cuts = n:(cuts s) }
 

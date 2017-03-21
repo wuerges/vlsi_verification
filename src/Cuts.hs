@@ -26,18 +26,18 @@ whileTodoM test action (t:ts) = do
                return (r:rs)
        else return []
 
-stopTest :: BDDState Bool
+stopTest :: KS Bool
 stopTest = do x <- getSize
               return $ x < 10000
 
 -- | Checks the equivalence o a small set of nodes.
 -- | Marks the equivalent nodes to become inputs
 equivLimited :: G -> (G, [Node])
-equivLimited g = (g', cs)
+equivLimited g = (g', [])
   where
     todo = mybfs g
-    (_, g', cs, _) =
-      runBS g $ do
+    (_, g', _) =
+      runKS g $ do
         whileTodoM stopTest kuelmannNode todo
 
 cutLevelsGraph :: G -> [Node] -> I.IntMap Node

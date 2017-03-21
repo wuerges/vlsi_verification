@@ -1,7 +1,6 @@
 module BDDGraphMonad where
 
 import Graph
-import GraphMonad
 import BDDGraph
 
 import Control.Monad.Writer
@@ -15,36 +14,31 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Maybe
 import qualified Data.IntMap as I
 
-data BDDStateD = S { graph :: T
-                   , cuts ::  [Node]
-                   , ordering :: BDDOrdering
-                   , count :: Int }
+data KS_D = S { bdd :: T
+              , ordering :: BDDOrdering
+              , count :: Int
+              , graph :: G
+              , equals :: [(Node, Node)]
+              , cuts :: [Node] }
 
-type BDDState = StateT BDDStateD KS
+type KS = State KS_D
 
-getRepr :: Node -> BDDState Bool
+getG :: KS G
+getG = graph <$> get
+
+getRepr :: Node -> KS Bool
 getRepr n = do
   t <- getT
   return $ maybe False repr (lab t n)
 
-mergeNodesT :: Node -> Node -> BDDState Node
-mergeNodesT n1 n2 = do
-  lift (mergeNodes (n1, n2))
-  when (n2 /= 0 && n2 /= 1) $ addCut n2
-  return n2
 
-equate :: Node -> Node -> BDDState Node
+equate :: Node -> Node -> KS ()
 equate n1 n2 = trace ("Equating " ++ show (n1, n2)) $ do
   r1 <- getRepr n1
-  if n1 == n2
-     then return n1
-     else
-       if r1
-          then mergeNodesT n1 n2
-          else mergeNodesT n2 n1
-
-getG :: BDDState G
-getG = lift get
+  r2 <- getRepr n2
+  unless (n1 == n2) $
+    when (r1 && r2) $
+      modify $ \s -> s { equals = (n1, n2):(equals s) }
 
 genOrdering :: G -> BDDOrdering
 genOrdering g = f
@@ -57,7 +51,7 @@ genOrdering g = f
                 Just o2 = I.lookup n2 m
              in o1 `compare` o2
 
-calcBDDNode :: Node -> BDDState ()
+calcBDDNode :: Node -> KS ()
 calcBDDNode n = do
   g <- getG
   if indeg g n == 0
@@ -70,7 +64,7 @@ calcBDDNode n = do
              bddAndMany (Just n) is
   return ()
 
-getCount :: BDDState Int
+getCount :: KS Int
 getCount = do
   modify $ \s -> s { count = count s + 1 }
   count <$> get
@@ -78,44 +72,44 @@ getCount = do
 getBDD :: Node -> BDD
 getBDD n = B n
 
-getBDDfromEdge :: LEdge Bool -> BDDState BDD
+getBDDfromEdge :: LEdge Bool -> KS BDD
 getBDDfromEdge (o, _, v) =
   if v then return $ B o
        else negateBDDM $ B o
 
-withGraph :: T -> (BDDState a) -> T
-withGraph t op =
-  runKS (empty :: G) $ evalStateT (op >> getT) $ S t [] compare 0
+withBDD :: T -> (KS a) -> T
+withBDD t op =
+  evalState (op >> getT) $ S t compare 0 (empty :: G) [] []
 
+ {-
+  data KS_D = S { bdd :: T
+  , ordering :: BDDOrdering
+  , count :: Int
+  , graph :: G
+  , equals :: [(Node, Node)]
+  , cuts :: [Node] }
+  -}
 
-runBS :: G -> (BDDState a)
-            -> (T, G, [Node], a)
-runBS g op = r
+runKS :: G -> (KS a) -> (T, G, a)
+runKS g op = r'
   where
     order = genOrdering g
     initialT = reserveNodes (nodes g) startingT
-    r = runKS g $
-      flip evalStateT (S initialT [] order 0) $ do
-        r <- op
-        t <- getT
-        g <- getG
-        cs <- cuts <$> get
-        return (t, g, cs, r)
+    r' = flip evalState (S initialT order 0 g [] []) $ do
+      r <- op
+      t <- getT
+      g <- getG
+      return (t, g, r)
 
-getT :: BDDState T
-getT =  graph <$> get
+getT :: KS T
+getT =  bdd <$> get
 
-modifyT :: (T -> T) -> BDDState ()
+modifyT :: (T -> T) -> KS ()
 modifyT f = do
   s <- get
-  put $ s { graph = f (graph s) }
+  put $ s { bdd = f (bdd s) }
 
-addCut :: Node -> BDDState ()
-addCut n = do
-  s <- get
-  put $ s { cuts = n:(cuts s) }
-
-bddAndMany :: Maybe Node -> [BDD] -> BDDState BDD
+bddAndMany :: Maybe Node -> [BDD] -> KS BDD
 bddAndMany n [] = error $ "cannot conjoin nothing"
 bddAndMany n [B b] = bddAnd n (B b) (B 1)
 bddAndMany n [a, b] = bddAnd n a b
@@ -123,25 +117,23 @@ bddAndMany n (a:os) = do
   r <- bddAndMany Nothing os
   bddAnd n a r
 
-bddAndRepr :: Node -> BDD -> BDD ->  BDDState BDD
+bddAndRepr :: Node -> BDD -> BDD ->  KS BDD
 bddAndRepr n b1 b2 = do
-  --g <- getG
-  --tell ["// bddAndRepr - before " ++ show (n, b1, b2) ++ "\n" ++ showBDD g ++ "\n" ]
   bddAnd (Just n) b1 b2
 
-getOrdering :: Node -> Node -> BDDState Ordering
+getOrdering :: Node -> Node -> KS Ordering
 getOrdering n1 n2 = do
   m <- ordering <$> get
   return $ n1 `m` n2
 
-newParentM :: Maybe Node -> Node -> (Node, Node) -> BDDState BDD
+newParentM :: Maybe Node -> Node -> (Node, Node) -> KS BDD
 newParentM repr orig (l, r) = do
   g <- getT
   let (bdd', g') = newParent repr orig (l,r) g
   modifyT $ const g'
   return bdd'
 
-bddAnd :: Maybe Node -> BDD -> BDD -> BDDState BDD
+bddAnd :: Maybe Node -> BDD -> BDD -> KS BDD
 
 -- Trivial cases when there is no representative
 bddAnd Nothing (B 0) _     = return $ B 0
@@ -183,7 +175,7 @@ bddAnd repr (B n1) (B n2) = do
 setSons n z o =
   modifyT $ insEdges [(n, z, False), (n, o, True)]
 
-reduce1 :: BDD -> BDDState ()
+reduce1 :: BDD -> KS ()
 reduce1 (B 0) = return ()
 reduce1 (B 1) = return ()
 reduce1 (B n) = do
@@ -192,7 +184,7 @@ reduce1 (B n) = do
     modifyT $ delEdges [(n,z), (n,o)]
     mergeNodes1 n z
 
-mergeNodes1 :: Node -> Node -> BDDState ()
+mergeNodes1 :: Node -> Node -> KS ()
 mergeNodes1 top bot = do
   g <- getT
   let (Just (is_top, _, V _   r_top, _), g') = match top g
@@ -207,7 +199,7 @@ mergeNodes1 top bot = do
 
 reduce2' b1 b2 = reduce2 (b1, b2)
 
-reduce2 :: (BDD, BDD) -> BDDState ()
+reduce2 :: (BDD, BDD) -> KS ()
 reduce2 (B 0, _) =  return ()
 reduce2 (_, B 0) = return ()
 reduce2 (B 1, _) = return ()
@@ -220,21 +212,8 @@ reduce2 (B n1, B n2) = do
     (z2, o2) <- flip getSons n2 <$> getT
     when (z1 == z2 && o1 == o2) $ do
       moveParents n1 n2
-    --tell ["// reduce2 - before " ++ show (n1, n2) ++ "\n" ++ showBDD g0 ++ "\n" ]
-    --tell ["// reduce2 - after " ++ show (n1, n2) ++ "\n" ++ showBDD g ++ "\n" ]
 
-{-
--- | moveParents' removes the parents of the first
--- node n1 and adds it to n2.
-moveParents' :: Node -> Node -> BDDState ()
-moveParents' n1 n2 = do
-  ps_n1 <- flip inn n1 <$> getG
-  modifyG $ delEdges [(o, d) | (o, d, _) <- ps_n1]
-  modifyG $ insEdges [(o, n2, v) | (o,_,v) <- ps_n1]
-  bddPurge (B n1)
--}
-
-moveParents :: Node -> Node -> BDDState ()
+moveParents :: Node -> Node -> KS ()
 moveParents n1 n2 = do
   g <- getT
   let (Just (is_n1, _, V inp r_n1, os_n1), g') = match n1 g
@@ -243,13 +222,13 @@ moveParents n1 n2 = do
   modifyT $ const g'''
   when (r_n1 && r_n2) $ equate n1 n2 >> return ()
 
-reduceGroup :: [BDD] -> BDDState ()
+reduceGroup :: [BDD] -> KS ()
 reduceGroup [] = return ()
 reduceGroup [_] = return ()
 reduceGroup (x:xs) = do
   mapM_ (reduce2' x) xs
 
-reduceLayer :: [Node] -> BDDState ()
+reduceLayer :: [Node] -> KS ()
 reduceLayer ls = do
   mapM_ (reduce1 . B) ls
   g <- getT
@@ -257,11 +236,11 @@ reduceLayer ls = do
   --mapM_ reduce2 [(B a, B b) | a <- ls, b <- ls, a < b]
 
 
-getSize :: BDDState Int
-getSize = (length . nodes) <$> getG
+getSize :: KS Int
+getSize = (length . nodes) <$> getT
 
 
-reduceAll :: BDDState ()
+reduceAll :: KS ()
 reduceAll = do
   g <- getT
     {-
@@ -276,14 +255,14 @@ reduceAll = do
 
 -- Monadic functions show be bellow here
 
-initialBDD_M :: Node -> BDDState BDD
+initialBDD_M :: Node -> KS BDD
 initialBDD_M n =
   do modifyT $ initialBDD n
      return $ B n
 
 negateBDDM b = do
   (bdd', g') <- negateBDD b <$> getT
-  modify $ \s -> s { graph = g' }
+  modify $ \s -> s { bdd = g' }
   return bdd'
 
 

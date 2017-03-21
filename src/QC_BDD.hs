@@ -51,7 +51,7 @@ newtype G_BDD = G_BDD T
   deriving Show
 
 
-bddAndMany' repr sons g = withGraph g (bddAndMany repr sons)
+bddAndMany' repr sons g = withBDD g (bddAndMany repr sons)
 
 
 
@@ -92,7 +92,7 @@ newtype R_BDD = R_BDD T
 
 instance Arbitrary R_BDD where
   arbitrary = do G_BDD x <- arbitrary
-                 return $ R_BDD $ withGraph x $ reduceAll
+                 return $ R_BDD $ withBDD x $ reduceAll
 
 
 prop_input_sons (I_BDD g) = all f ns
