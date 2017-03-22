@@ -193,7 +193,7 @@ reduce2 (B 1, _) = return ()
 reduce2 (_, B 1) = return ()
 
 reduce2 (B n1, B n2) = do
-  traceM $ "Reducing" ++ show (n1, n2)
+  --traceM $ "Reducing" ++ show (n1, n2)
   g0 <- getT
   when (gelem n1 g0 && gelem n2 g0) $ do
     (z1, o1) <- flip getSons n1 <$> getT

@@ -279,12 +279,15 @@ offset g1 g2 = (max b1 b2 - min a1 a2) + 1
 
 rnNode off n = n + off
 
+renumberGraph' g1 g2 = renumberGraph off g2
+  where off = offset g1 g2
+
 joinGraphs :: G -> G -> G
 joinGraphs g1 g2 =
   fixSingleNodes $ insEdges es' gu
   where
-    off = offset g1 g2
-    g2' = renumberGraph off g2
+    --off = offset g1 g2
+    g2' = renumberGraph' g1 g2
 
     gu = mkGraph (rmdups $ labNodes g1 ++ labNodes g2') (labEdges g1 ++ labEdges g2')
 

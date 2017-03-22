@@ -70,8 +70,9 @@ checkEquivRed g1 g2 gu =
   (S.size is <= S.size o1_s) &&
   (S.size is <= S.size o2_s)
   where
+    g2' = renumberGraph' g1 g2
     o1_s = S.fromList (getOutputs g1) `S.difference` zo
-    o2_s = S.fromList (getOutputs g2) `S.difference` zo
+    o2_s = S.fromList (getOutputs g2') `S.difference` zo
     ou_s = S.fromList (getOutputs gu) `S.difference` zo
     is = (o1_s `S.union` o2_s) `S.intersection` ou_s
     zo = S.fromList [0,1]
