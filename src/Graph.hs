@@ -196,8 +196,8 @@ fixSingleNode :: Int -> G -> G
 fixSingleNode n g =  case match n g of
     (Nothing, _)  -> error "Could not match context in fixSingleNode"
     (Just ctx, g') -> case ctx of
-       ([(vi, ni)], _, _, [(vo, no)]) ->
-         insEdge (ni, no, not $ vi /= vo) g'
+       ([(vi, ni)], _, _, (o:os)) ->
+         insEdges [(ni, no, not $ vi /= vo) | (vo, no) <- (o:os)] g'
        _                               -> g
 
 -- | Cleans up graph after adding extra single nodes
