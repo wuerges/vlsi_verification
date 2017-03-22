@@ -42,7 +42,8 @@ genOrdering g = f
         f n1 n2 =
             let Just o1 = I.lookup n1 m
                 Just o2 = I.lookup n2 m
-             in traceShow ("order", n1, n2) $ o1 `compare` o2
+             in --traceShow ("order", n1, n2) $
+               o1 `compare` o2
 
 calcBDDNode :: Node -> KS ()
 calcBDDNode n = do
@@ -232,7 +233,7 @@ reduceLayer ls = do
 
 
 getSize :: KS Int
-getSize = (length . nodes) <$> getT
+getSize = order <$> getT
 
 
 reduceAll :: KS ()
