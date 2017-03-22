@@ -56,9 +56,9 @@ equivG g = Right $ checkResult (reduceG g)
 reduceGT :: G -> (G, T)
 reduceGT g = (g', t)
   where (t, g', _) = runKS g $ do
-                       --mapM_ (\x -> kuelmannNode x >> reduceAll) (mybfs g)
-                       mapM_ (\x -> kuelmannNode x >> reduce1 (B x)) (mybfs g)
-                       reduceAll
+                       mapM_ (\x -> kuelmannNode x >> reduceAll) (mybfs g)
+                       --mapM_ (\x -> kuelmannNode x >> reduce1 (B x)) (mybfs g)
+                       --reduceAll
 
 reduceG :: G -> G
 reduceG = fst . reduceGT
