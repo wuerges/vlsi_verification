@@ -193,7 +193,8 @@ reduce2 (B 1, _) = return ()
 reduce2 (_, B 1) = return ()
 
 reduce2 (B n1, B n2) = do
-  g0 <- getG
+  traceM $ "Reducing" ++ show (n1, n2)
+  g0 <- getT
   when (gelem n1 g0 && gelem n2 g0) $ do
     (z1, o1) <- flip getSons n1 <$> getT
     (z2, o2) <- flip getSons n2 <$> getT
@@ -208,8 +209,9 @@ moveParents n1 n2 = do
       g''' = (rmdups $ is_n1 ++ is_n2, node_keep, V inp r_keep, os_n1) & g''
       node_keep = min n1 n2
       r_keep = r_n1 || r_n2
+  equate n1 n2
   modifyT $ const g'''
-  when (r_n1 && r_n2) $ equate n1 n2 >> return ()
+  --when (r_n1 && r_n2) $ equate n1 n2 >> return ()
 
 reduceGroup :: [BDD] -> KS ()
 reduceGroup [] = return ()
@@ -238,7 +240,7 @@ reduceAll = do
       "\nGraphviz: -> " ++ showBDD g ++
         "\nGraph: -> " ++ show g
         -}
-  mapM_ reduceLayer $ layers g
+  mapM_ reduceLayer $ (reverse $ layers g)
   -- mapM_ bddPurge' (map B (nodes g))
 
 

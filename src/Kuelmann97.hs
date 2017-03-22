@@ -65,11 +65,18 @@ reduceG g = g'
 
 checkEquivRed :: G -> G -> G -> Bool
 checkEquivRed g1 g2 gu =
-  o1_s == o2_s && o1_s == ou_s
+  --o1_s == o2_s && o1_s == ou_s
+  --traceShow (is, o1_s, o2_s) $
+  (S.size is <= S.size o1_s) &&
+  (S.size is <= S.size o2_s)
   where
-    o1_s = length $ getOutputs g1
-    o2_s = length $ getOutputs g2
-    ou_s = length $ getOutputs gu
+    o1_s = S.fromList (getOutputs g1) `S.difference` zo
+    o2_s = S.fromList (getOutputs g2) `S.difference` zo
+    ou_s = S.fromList (getOutputs gu) `S.difference` zo
+    is = (o1_s `S.union` o2_s) `S.intersection` ou_s
+    zo = S.fromList [0,1]
+
+
 
 getPreds :: G -> Node -> (Node, [(Node, Bool)])
 getPreds g y = (y, sort $ [(o, v) | (o, d, v) <- inn g y])
