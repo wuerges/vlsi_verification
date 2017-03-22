@@ -42,7 +42,7 @@ genOrdering g = f
         f n1 n2 =
             let Just o1 = I.lookup n1 m
                 Just o2 = I.lookup n2 m
-             in o1 `compare` o2
+             in traceShow ("order", n1, n2) $ o1 `compare` o2
 
 calcBDDNode :: Node -> KS ()
 calcBDDNode n = do
@@ -125,10 +125,14 @@ bddAnd Nothing (B 1) (B b) = return $ B b
 
 -- When there is a representative it must be
 -- added to the BDD no matter the cost.
-bddAnd (Just x) (B 0) _ =
+bddAnd (Just x) (B 0) _ = do
+  --equate 0 x
+  --return $ B 0
   newParentM (Just x) 0 (0, 0)
 
-bddAnd (Just x) (B 1) (B b) =
+bddAnd (Just x) (B 1) (B b) = do
+  --equate x b
+  --return $ B (min x b)
   newParentM (Just x) b (b, b)
 
 bddAnd repr _ (B 0) = bddAnd repr (B 0) undefined
