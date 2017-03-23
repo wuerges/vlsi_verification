@@ -199,10 +199,10 @@ reduce2 (_, B 1) = return ()
 
 reduce2 (B n1, B n2) = do
   --traceM $ "Reducing" ++ show (n1, n2)
-  g0 <- getT
-  when (gelem n1 g0 && gelem n2 g0) $ do
-    (z1, o1) <- flip getSons n1 <$> getT
-    (z2, o2) <- flip getSons n2 <$> getT
+  t <- getT
+  when (gelem n1 t && gelem n2 t) $ do
+    let (z1, o1) = getSons t n1
+    let (z2, o2) = getSons t n2
     when (z1 == z2 && o1 == o2) $ do
       moveParents n1 n2
 

@@ -36,8 +36,11 @@ kuelmannNode n1 =
     o <- order <$> getG
     c <- getCount
     sz <- getSize
-    traceM (printf "Current Node: %5d -- %5d/%5d -- BDD order: %5d -- Graph order: %5d" n1 c o sz o)
-    return ()
+    traceM (printf "Current Node: %5d -- %5d/%5d -- BDD order: %5d -- Graph order: %5d " n1 c o sz o  ++ show (sz > 20000))
+    reduce1 (B n1)
+    --reduceAll
+    -- when (sz > 20000) $ do
+    --   reduceAll
 
 equivVerilog :: Verilog -> Verilog -> Either String Bool
 equivVerilog v1 v2 = Right $ checkEquivRed g1 g2 red
@@ -56,9 +59,8 @@ equivG g = Right $ checkResult (reduceG g)
 reduceGT :: G -> (G, T)
 reduceGT g = (g', t)
   where (t, g', _) = runKS g $ do
-                       mapM_ (\x -> kuelmannNode x >> reduceAll) (mybfs g)
-                       --mapM_ (\x -> kuelmannNode x >> reduce1 (B x)) (mybfs g)
-                       --reduceAll
+                       mapM_ kuelmannNode (mybfs g)
+                       reduceAll
 
 reduceG :: G -> G
 reduceG = fst . reduceGT
