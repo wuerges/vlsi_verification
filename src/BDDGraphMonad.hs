@@ -185,8 +185,8 @@ mergeNodes1 top bot = do
       node_keep = min top bot
       r_keep = r_top || r_bot
 
-  equate top bot
   modifyT $ const g'''
+  equate top bot
 
 
 reduce2' b1 b2 = reduce2 (b1, b2)
@@ -214,8 +214,8 @@ moveParents n1 n2 = do
       g''' = (rmdups $ is_n1 ++ is_n2, node_keep, V inp r_keep, os_n1) & g''
       node_keep = min n1 n2
       r_keep = r_n1 || r_n2
-  equate n1 n2
   modifyT $ const g'''
+  equate n1 n2
   --when (r_n1 && r_n2) $ equate n1 n2 >> return ()
 
 reduceGroup :: [BDD] -> KS ()
