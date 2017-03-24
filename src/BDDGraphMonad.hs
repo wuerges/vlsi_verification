@@ -164,6 +164,15 @@ bddAnd repr (B n1) (B n2) = do
 setSons n z o =
   modifyT $ insEdges [(n, z, False), (n, o, True)]
 
+reduce1' :: Node -> (T, [(Node,Node)]) -> (T, [(Node,Node)])
+reduce1' n (t, l) =
+  if gelem n t && outdeg t n > 0 && z == o
+     then (moveParents' (n,z) t, (n,z):l)
+     else (t, l)
+  where
+    (z, o) = getSons t n
+
+
 reduce1 :: BDD -> KS ()
 reduce1 (B 0) = return ()
 reduce1 (B 1) = return ()
@@ -204,7 +213,10 @@ reduceGroup (x:xs) = do
 
 reduceLayer :: [Node] -> KS [(Node, Node)]
 reduceLayer ls = do
-  mapM_ (reduce1 . B) ls
+  t0 <- getT
+  let (te, eqs1) = foldr reduce1' (t0, []) ls
+  --modifyT $ \t' -> foldr moveParents' t' eqs1
+  --mapM_ (reduce1 . B) ls
   --eqs0 <- reduce1Layer ls
   --modifyT $ \t' -> foldr moveParents' t' eqs0
   --eqs1 <- reduce1Layer ls
@@ -212,7 +224,7 @@ reduceLayer ls = do
   eqs2 <- reduce2Layer ls
   modifyT $ \t' -> foldr moveParents' t' eqs2
   --return $ eqs1 ++ eqs2
-  return eqs2
+  return $ eqs1 ++ eqs2
 
 
 getSize :: KS Int
