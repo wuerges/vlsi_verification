@@ -1,7 +1,7 @@
 module BDDGraphCommon where
 
 import Data.Graph.Inductive
-import Control.Monad.State
+import Control.Monad.State.Strict
 
 data KS_D = S { bdd :: T
               , ordering :: BDDOrdering

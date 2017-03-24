@@ -30,20 +30,9 @@ putG g = modifyG $ const g
 mergeNodes :: Node -> Node -> KS ()
 mergeNodes n1 n2 = do
   when (n1 /= n2) $
-    mergeNodes' (min n1 n2, max n1 n2)
+    modifyG $ mergeNodes' (min n1 n2, max n1 n2)
   --when (n2 /= 0 && n2 /= 1) $ addCut n2
 
-mergeNodes' :: (Node, Node) -> KS ()
-mergeNodes' (n1, n2) = do
-    g <- getG
-    let es = out g n2 -- getting the edges of n2
-        --preparing to add the edges to n1
-        es' = [(n1, d, l) | (o, d, l) <- es]
-        g' = insEdges es' $ g
-    putG $ delEdge (n1, n1) g'
-    --purgeNode n1
-    --traceShow ("purge", n2) $
-    purgeNode' n2
 
 purgeNode' :: Node -> KS ()
 purgeNode' n = do

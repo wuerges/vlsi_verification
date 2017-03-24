@@ -7,7 +7,7 @@ import BDDGraphCommon
 
 import Control.Monad.Writer
 import Data.Graph.Inductive
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Data.Ord
 import Data.List
 import Debug.Trace
@@ -169,25 +169,10 @@ reduce1 (B 0) = return ()
 reduce1 (B 1) = return ()
 reduce1 (B n) = do
   t <- getT
-  when (gelem n t) $ do
-    let (z, o) = getSons t n
-    when (z == o) $ do
-      --modifyT $ delEdges [(n,z), (n,o)]
-      mergeNodes1 n z
-
-mergeNodes1 :: Node -> Node -> KS ()
-mergeNodes1 top bot = do
-  g <- getT
-  let (Just (is_top, _, V _   r_top, _), g') = match top g
-      (Just (is_bot, _, V inp r_bot, os_bot), g'') = match bot g'
-      g''' = (rmdups $ is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & g''
-      -- TODO must pay more attention here in the future
-      node_keep = min top bot
-      r_keep = r_top || r_bot
-
-  modifyT $! const g'''
-  equate top bot
-
+  let (z, o) = getSons t n
+  when (gelem n t && z == o) $ do
+    modifyT $ moveParents n z
+    equate n z
 
 reduce2' b1 b2 = reduce2 (b1, b2)
 
@@ -204,19 +189,8 @@ reduce2 (B n1, B n2) = do
     let (z1, o1) = getSons t n1
     let (z2, o2) = getSons t n2
     when (z1 == z2 && o1 == o2) $ do
-      moveParents n1 n2
-
-moveParents :: Node -> Node -> KS ()
-moveParents n1 n2 = do
-  g <- getT
-  let (Just (is_n1, _, V inp r_n1, os_n1), g') = match n1 g
-      (Just (is_n2, _, V _   r_n2, _    ), g'') = match n2 g'
-      g''' = (rmdups $ is_n1 ++ is_n2, node_keep, V inp r_keep, os_n1) & g''
-      node_keep = min n1 n2
-      r_keep = r_n1 || r_n2
-  modifyT $! const g'''
-  equate n1 n2
-  --when (r_n1 && r_n2) $ equate n1 n2 >> return ()
+      modifyT $ moveParents n1 n2
+      equate n1 n2
 
 reduceGroup :: [BDD] -> KS ()
 reduceGroup [] = return ()
@@ -228,7 +202,7 @@ reduceLayer :: [Node] -> KS ()
 reduceLayer ls = do
   mapM_ (reduce1 . B) ls
   g <- getT
-  mapM_ (reduceGroup . map B) $ groupWithSons g ls
+  mapM_ (reduceGroup . map B) $! groupWithSons g ls
   --mapM_ reduce2 [(B a, B b) | a <- ls, b <- ls, a < b]
 
 
@@ -239,13 +213,14 @@ getSize = order <$> getT
 reduceAll :: KS ()
 reduceAll = do
   g <- getT
+  mapM_ (reduce1 . B) (nodes g)
     {-
   traceM $ "Layer: " ++ show (layers g) ++
     "\nGroups: " ++ show (map (groupWithSons g) (layers g)) ++
       "\nGraphviz: -> " ++ showBDD g ++
         "\nGraph: -> " ++ show g
         -}
-  mapM_ reduceLayer $ (reverse $ layers g)
+  mapM_ reduceLayer $! (reverse $ layers g)
   -- mapM_ bddPurge' (map B (nodes g))
 
 
