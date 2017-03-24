@@ -198,29 +198,40 @@ reduceGroup [_] = return ()
 reduceGroup (x:xs) = do
   mapM_ (reduce2' x) xs
 
-reduceLayer :: [Node] -> KS ()
+reduceLayer :: [Node] -> KS [(Node, Node)]
 reduceLayer ls = do
-  mapM_ (reduce1 . B) ls
+  --mapM_ (reduce1 . B) ls
+  eqs1 <- reduce1Layer ls
   g <- getT
   mapM_ (reduceGroup . map B) $! groupWithSons g ls
   --mapM_ reduce2 [(B a, B b) | a <- ls, b <- ls, a < b]
+  return eqs1
 
 
 getSize :: KS Int
 getSize = order <$> getT
 
 
+reduce1Layer :: [Node] -> KS [(Node,Node)]
+reduce1Layer ns = do
+  t <- getT
+  let rs = catMaybes (map (flip checkReduce1 t) ns)
+  modifyT $ \t' -> foldr moveParents' t' rs
+  return rs
+
 reduceAll :: KS ()
 reduceAll = do
   g <- getT
-  mapM_ (reduce1 . B) (nodes g)
+  --reduce1Layer (nodes g)
+  --mapM_ (reduce1 . B) (nodes g)
     {-
   traceM $ "Layer: " ++ show (layers g) ++
     "\nGroups: " ++ show (map (groupWithSons g) (layers g)) ++
       "\nGraphviz: -> " ++ showBDD g ++
         "\nGraph: -> " ++ show g
         -}
-  mapM_ reduceLayer $! (reverse $ layers g)
+  eqs <- mapM reduceLayer $! (reverse $ layers g)
+  modifyG $ \g' -> foldr mergeNodes' g' (concat eqs)
   -- mapM_ bddPurge' (map B (nodes g))
 
 

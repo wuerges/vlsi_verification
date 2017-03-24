@@ -124,6 +124,9 @@ sortAndGroupBy p = groupBy (equating p) . sortBy (comparing p)
 
 groupWithSons g = map (map fst) . sortAndGroupBy snd . map (\n -> (n, getSons g n)) . filter (flip gelem g)
 
+moveParents' :: (Node, Node) -> T -> T
+moveParents' (a, b) = moveParents a b
+
 moveParents :: Node -> Node -> T -> T
 moveParents top bot t =
   (rmdups $ is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & t''
@@ -132,3 +135,11 @@ moveParents top bot t =
     (Just (is_bot, _, V inp r_bot, os_bot), t'') = match bot t'
     node_keep = min top bot
     r_keep = r_top || r_bot
+
+checkReduce1 :: Node -> T -> Maybe (Node, Node)
+checkReduce1 n t =
+  if gelem n t && outdeg t n > 0 && z == o
+     then Just (n, z)
+     else Nothing
+  where (z, o) = getSons t n
+
