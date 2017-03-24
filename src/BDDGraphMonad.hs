@@ -202,14 +202,23 @@ reduceLayer :: [Node] -> KS [(Node, Node)]
 reduceLayer ls = do
   --mapM_ (reduce1 . B) ls
   eqs1 <- reduce1Layer ls
-  g <- getT
-  mapM_ (reduceGroup . map B) $! groupWithSons g ls
+  eqs2 <- reduce2Layer ls
+  --g <- getT
+  --mapM_ (reduceGroup . map B) $! groupWithSons g ls
   --mapM_ reduce2 [(B a, B b) | a <- ls, b <- ls, a < b]
-  return eqs1
+  return $ eqs1 ++ eqs2
 
 
 getSize :: KS Int
 getSize = order <$> getT
+
+
+reduce2Layer :: [Node] -> KS [(Node,Node)]
+reduce2Layer ls = do
+  t <- getT
+  let gs = concatMap regroup (groupWithSons t ls)
+  modifyT $ \t' -> foldr moveParents' t' gs
+  return gs
 
 
 reduce1Layer :: [Node] -> KS [(Node,Node)]

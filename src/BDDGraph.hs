@@ -125,7 +125,9 @@ sortAndGroupBy p = groupBy (equating p) . sortBy (comparing p)
 groupWithSons g = map (map fst) . sortAndGroupBy snd . map (\n -> (n, getSons g n)) . filter (flip gelem g)
 
 moveParents' :: (Node, Node) -> T -> T
-moveParents' (a, b) = moveParents a b
+moveParents' (a, b) t
+  | gelem a t && gelem b t = moveParents a b t
+  | otherwise = t
 
 moveParents :: Node -> Node -> T -> T
 moveParents top bot t =
@@ -143,3 +145,14 @@ checkReduce1 n t =
      else Nothing
   where (z, o) = getSons t n
 
+
+checkReduce2 :: T -> (Node, Node) -> Bool
+checkReduce2 t (n1, n2) =
+  gelem n1 t && gelem n2 t && z1 == z2 && o1 == o2
+  where (z1, o1) = getSons t n1
+        (z2, o2) = getSons t n2
+
+regroup :: [Node] -> [(Node, Node)]
+regroup [] = []
+regroup [x] = []
+regroup (x:xs) = zip (repeat x) xs
