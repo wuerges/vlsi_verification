@@ -169,11 +169,14 @@ reduce1 (B 0) = return ()
 reduce1 (B 1) = return ()
 reduce1 (B n) = do
   t <- getT
-  let (z, o) = getSons t n
-  when (gelem n t && z == o) $ do
-    modifyT $ moveParents n z
-    equate n z
+  when (gelem n t) $ do
+    when (outdeg t n > 0) $ do
+      let (z, o) = getSons t n
+      when (z == o) $ do
+        modifyT $ moveParents' (n, z)
+        equate n z
 
+ {-
 reduce2' b1 b2 = reduce2 (b1, b2)
 
 reduce2 :: (BDD, BDD) -> KS ()
@@ -197,15 +200,14 @@ reduceGroup [] = return ()
 reduceGroup [_] = return ()
 reduceGroup (x:xs) = do
   mapM_ (reduce2' x) xs
+  -}
 
 reduceLayer :: [Node] -> KS [(Node, Node)]
 reduceLayer ls = do
-  --mapM_ (reduce1 . B) ls
   eqs1 <- reduce1Layer ls
+  modifyT $ \t' -> foldr moveParents' t' eqs1
   eqs2 <- reduce2Layer ls
-  --g <- getT
-  --mapM_ (reduceGroup . map B) $! groupWithSons g ls
-  --mapM_ reduce2 [(B a, B b) | a <- ls, b <- ls, a < b]
+  modifyT $ \t' -> foldr moveParents' t' eqs2
   return $ eqs1 ++ eqs2
 
 
@@ -216,17 +218,13 @@ getSize = order <$> getT
 reduce2Layer :: [Node] -> KS [(Node,Node)]
 reduce2Layer ls = do
   t <- getT
-  let gs = concatMap regroup (groupWithSons t ls)
-  modifyT $ \t' -> foldr moveParents' t' gs
-  return gs
+  return $ concatMap regroup (groupWithSons t ls)
 
 
 reduce1Layer :: [Node] -> KS [(Node,Node)]
 reduce1Layer ns = do
   t <- getT
-  let rs = catMaybes (map (flip checkReduce1 t) ns)
-  modifyT $ \t' -> foldr moveParents' t' rs
-  return rs
+  return $ catMaybes (map (flip checkReduce1 t) ns)
 
 reduceAll :: KS ()
 reduceAll = do
