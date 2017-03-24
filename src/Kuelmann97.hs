@@ -39,8 +39,8 @@ kuelmannNode n1 =
     traceM (printf "Current Node: %5d -- %5d/%5d -- BDD order: %5d -- Graph order: %5d " n1 c o sz o  ++ show (sz > 20000))
     reduce1 (B n1)
     --reduceAll
-    -- when (sz > 20000) $ do
-    --   reduceAll
+    when (sz > 20000) $ do
+      reduceAll
 
 equivVerilog :: Verilog -> Verilog -> Either String Bool
 equivVerilog v1 v2 = Right $ checkEquivRed g1 g2 red
@@ -48,9 +48,6 @@ equivVerilog v1 v2 = Right $ checkEquivRed g1 g2 red
         g2 =  makeGraphV [v2]
         gu = joinGraphs g1 g2
         red = reduceG gu
-
-
-
 
 
 equivG :: G -> Either String Bool
