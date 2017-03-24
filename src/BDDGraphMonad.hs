@@ -204,11 +204,15 @@ reduceGroup (x:xs) = do
 
 reduceLayer :: [Node] -> KS [(Node, Node)]
 reduceLayer ls = do
-  eqs1 <- reduce1Layer ls
-  modifyT $ \t' -> foldr moveParents' t' eqs1
+  mapM_ (reduce1 . B) ls
+  --eqs0 <- reduce1Layer ls
+  --modifyT $ \t' -> foldr moveParents' t' eqs0
+  --eqs1 <- reduce1Layer ls
+  --modifyT $ \t' -> foldr moveParents' t' eqs1
   eqs2 <- reduce2Layer ls
   modifyT $ \t' -> foldr moveParents' t' eqs2
-  return $ eqs1 ++ eqs2
+  --return $ eqs1 ++ eqs2
+  return eqs2
 
 
 getSize :: KS Int
@@ -220,11 +224,12 @@ reduce2Layer ls = do
   t <- getT
   return $ concatMap regroup (groupWithSons t ls)
 
-
+ {-
 reduce1Layer :: [Node] -> KS [(Node,Node)]
 reduce1Layer ns = do
   t <- getT
   return $ catMaybes (map (flip checkReduce1 t) ns)
+  -}
 
 reduceAll :: KS ()
 reduceAll = do

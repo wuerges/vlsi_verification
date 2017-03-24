@@ -138,12 +138,14 @@ moveParents top bot t =
     node_keep = min top bot
     r_keep = r_top || r_bot
 
+ {-
 checkReduce1 :: Node -> T -> Maybe (Node, Node)
 checkReduce1 n t =
   if gelem n t && outdeg t n > 0 && z == o
      then Just (n, z)
      else Nothing
   where (z, o) = getSons t n
+  -}
 
 
 checkReduce2 :: T -> (Node, Node) -> Bool
