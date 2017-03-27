@@ -108,6 +108,14 @@ executable test-equiv-many
   --ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
+executable test-equiv-profile
+  hs-source-dirs:      app
+  main-is:             TestEquiv.hs
+  build-depends:       base
+                     , vlsi-verification
+  ghc-options:        -O -auto-all -caf-all
+  default-language:    Haskell2010
+
 
 executable test-equiv-prod
   hs-source-dirs:      app
