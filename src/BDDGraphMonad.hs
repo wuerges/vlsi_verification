@@ -167,9 +167,10 @@ setSons n z o =
 reduce1' :: Node -> (T, [(Node,Node)]) -> (T, [(Node,Node)])
 reduce1' n (t, l) =
   if gelem n t && outdeg t n > 0 && z == o
-     then (moveParents' (n,z) t, (n,z):l)
+     then t' `seq` (t', (n,z):l)
      else (t, l)
   where
+    t' = moveParents' (n,z) t
     (z, o) = getSons t n
 
 

@@ -36,10 +36,10 @@ kuelmannNode n1 =
     o <- order <$> getG
     c <- getCount
     sz <- getSize
-    traceM (printf "Current Node: %5d -- %5d/%5d -- BDD order: %5d -- Graph order: %5d " n1 c o sz o  ++ show (sz > 50000))
+    traceM (printf "Current Node: %5d -- %5d/%5d -- BDD order: %5d -- Graph order: %5d " n1 c o sz o  ++ show (sz > 20000))
     reduce1 (B n1)
     --reduceAll
-    when (sz > 50000) $ do
+    when (sz > 20000) $ do
       reduceAll
 
 equivVerilog :: Verilog -> Verilog -> Either String Bool

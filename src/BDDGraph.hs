@@ -12,6 +12,7 @@ import Data.List
 import Data.Maybe
 import qualified Data.IntMap as M
 import Graph
+import Util
 
 dottyBDD t = dotty (showBDD t)
 
@@ -116,9 +117,6 @@ layers t = map (map fst) .
     filter (\(n, _) -> outdeg t n > 0) .
       labNodes $ t
 
-rmdups :: (Ord a, Eq a) => [a] -> [a]
-rmdups = map head . group . sort
-
 sortAndGroupBy p = groupBy (equating p) . sortBy (comparing p)
   where equating p x y = (p x) == (p y)
 
@@ -131,7 +129,7 @@ moveParents' (a, b) t
 
 moveParents :: Node -> Node -> T -> T
 moveParents top bot t =
-  (rmdups $ is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & t''
+  (is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & t''
   where
     (Just (is_top, _, V _   r_top, _), t') = match top t
     (Just (is_bot, _, V inp r_bot, os_bot), t'') = match bot t'
