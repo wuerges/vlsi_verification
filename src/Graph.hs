@@ -299,11 +299,11 @@ joinGraphs g1 g2 =
 
 mergeNodes' :: (Node, Node) -> G -> G
 mergeNodes' (n1, n2) g
-  | gelem n1 g && gelem n2 g = (is1, n1, v1, os') & g''
+  | gelem n1 g && gelem n2 g = g'''
   | otherwise = g
   where
     (Just (is1, _, v1, os1), g' ) = match n1 g
     (Just (_  , _, _ , os2), g'') = match n2 g'
     os' = S.toList $ S.delete (False, n1) $ S.delete (True, n1) $ S.fromList $ os1 ++ os2
-
+    g''' = (is1, n1, v1, os') & g''
 
