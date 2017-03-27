@@ -181,59 +181,14 @@ reduce1 (B n) = do
   modifyT $ const t'
   mapM_ equate' es
 
- {-
-reduce1 :: BDD -> KS ()
-reduce1 (B 0) = return ()
-reduce1 (B 1) = return ()
-reduce1 (B n) = do
-  t <- getT
-  when (gelem n t) $ do
-    when (outdeg t n > 0) $ do
-      let (z, o) = getSons t n
-      when (z == o) $ do
-        modifyT $ moveParents' (n, z)
-        equate n z
-  -}
-
- {-
-reduce2' b1 b2 = reduce2 (b1, b2)
-
-reduce2 :: (BDD, BDD) -> KS ()
-reduce2 (B 0, _) =  return ()
-reduce2 (_, B 0) = return ()
-reduce2 (B 1, _) = return ()
-reduce2 (_, B 1) = return ()
-
-reduce2 (B n1, B n2) = do
-  --traceM $ "Reducing" ++ show (n1, n2)
-  t <- getT
-  when (gelem n1 t && gelem n2 t) $ do
-    let (z1, o1) = getSons t n1
-    let (z2, o2) = getSons t n2
-    when (z1 == z2 && o1 == o2) $ do
-      modifyT $ moveParents n1 n2
-      equate n1 n2
-
-reduceGroup :: [BDD] -> KS ()
-reduceGroup [] = return ()
-reduceGroup [_] = return ()
-reduceGroup (x:xs) = do
-  mapM_ (reduce2' x) xs
-  -}
-
 reduceLayer :: [Node] -> KS [(Node, Node)]
 reduceLayer ls = do
   t0 <- getT
-  let (te, eqs1) = foldl' (flip reduce1') (t0, []) ls
-  --modifyT $ \t' -> foldr moveParents' t' eqs1
-  --mapM_ (reduce1 . B) ls
-  --eqs0 <- reduce1Layer ls
-  --modifyT $ \t' -> foldr moveParents' t' eqs0
-  --eqs1 <- reduce1Layer ls
-  --modifyT $ \t' -> foldr moveParents' t' eqs1
+  --let (te, eqs1) = foldl' (flip reduce1') (t0, []) ls
+  let (te, eqs1) = foldr reduce1' (t0, []) ls
   eqs2 <- reduce2Layer ls
+  --modifyT $ \t' -> foldl' (flip moveParents') t' eqs2
   modifyT $ \t' -> foldr moveParents' t' eqs2
-  --return $ eqs1 ++ eqs2
   return $ eqs1 ++ eqs2
 
 
@@ -246,31 +201,14 @@ reduce2Layer ls = do
   t <- getT
   return $ concatMap regroup (groupWithSons t ls)
 
- {-
-reduce1Layer :: [Node] -> KS [(Node,Node)]
-reduce1Layer ns = do
-  t <- getT
-  return $ catMaybes (map (flip checkReduce1 t) ns)
-  -}
-
 reduceAll :: KS ()
 reduceAll = do
   g <- getT
-  --reduce1Layer (nodes g)
-  --mapM_ (reduce1 . B) (nodes g)
-    {-
-  traceM $ "Layer: " ++ show (layers g) ++
-    "\nGroups: " ++ show (map (groupWithSons g) (layers g)) ++
-      "\nGraphviz: -> " ++ showBDD g ++
-        "\nGraph: -> " ++ show g
-        -}
   eqs <- mapM reduceLayer $! (reverse $ layers g)
   modifyG $ \g' -> foldr mergeNodes' g' (concat eqs)
-  -- mapM_ bddPurge' (map B (nodes g))
 
 
 -- Monadic functions show be bellow here
-
 initialBDD_M :: Node -> KS BDD
 initialBDD_M n =
   do modifyT $ initialBDD n

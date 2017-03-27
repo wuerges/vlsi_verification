@@ -129,7 +129,8 @@ moveParents' (a, b) t
 
 moveParents :: Node -> Node -> T -> T
 moveParents top bot t =
-  insEdges es $ ([], node_keep, V inp r_keep, os_bot) & t''
+  -- insEdges es $ ([], node_keep, V inp r_keep, os_bot) & t''
+  insEdges sucs $ insEdges es $ ([], node_keep, V inp r_keep, []) & t''
   --foldl' (\t e -> insEdge e t) (([], node_keep, V inp r_keep, os_bot) & t'') es
   --(is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & t''
   where
@@ -137,7 +138,8 @@ moveParents top bot t =
     (Just (is_bot, _, V inp r_bot, os_bot), t'') = match bot t'
     node_keep = min top bot
     r_keep = r_top || r_bot
-    es = [(a, node_keep, c) | (c,a) <- is_top ++ is_bot]
+    es = rmdups [(a, node_keep, c) | (c,a) <- is_top ++ is_bot]
+    sucs = rmdups [(node_keep, b, c) | (c,b) <- os_bot]
 
  {-
 checkReduce1 :: Node -> T -> Maybe (Node, Node)
