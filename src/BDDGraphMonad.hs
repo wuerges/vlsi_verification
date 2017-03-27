@@ -173,7 +173,15 @@ reduce1' n (t, l) =
     t' = moveParents' (n,z) t
     (z, o) = getSons t n
 
+reduce1 :: BDD -> KS ()
+reduce1 (B n) = do
+  t <- getT
+  let (t', es) = reduce1' n (t, [])
+      equate' (a, b) = equate a b
+  modifyT $ const t'
+  mapM_ equate' es
 
+ {-
 reduce1 :: BDD -> KS ()
 reduce1 (B 0) = return ()
 reduce1 (B 1) = return ()
@@ -185,6 +193,7 @@ reduce1 (B n) = do
       when (z == o) $ do
         modifyT $ moveParents' (n, z)
         equate n z
+  -}
 
  {-
 reduce2' b1 b2 = reduce2 (b1, b2)
@@ -215,7 +224,7 @@ reduceGroup (x:xs) = do
 reduceLayer :: [Node] -> KS [(Node, Node)]
 reduceLayer ls = do
   t0 <- getT
-  let (te, eqs1) = foldr reduce1' (t0, []) ls
+  let (te, eqs1) = foldl' (flip reduce1') (t0, []) ls
   --modifyT $ \t' -> foldr moveParents' t' eqs1
   --mapM_ (reduce1 . B) ls
   --eqs0 <- reduce1Layer ls
