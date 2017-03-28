@@ -15,7 +15,8 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-8.2
+# resolver: lts-8.2
+resolver: nightly-2017-03-28
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -37,12 +38,13 @@ resolver: lts-8.2
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - '.'
+- fgl.git
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- fgl-visualize-0.1.0.1
 - monad-memo-0.4.1
 - dotgen-0.4.2
+- fgl-visualize-0.1.0.1
 
 # Override default flag values for local packages and extra-deps
 flags: {}

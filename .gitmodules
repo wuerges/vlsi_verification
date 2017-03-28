@@ -1,0 +1,3 @@
+[submodule "fgl.git"]
+	path = fgl.git
+	url = git@github.com:wuerges/fgl.git
