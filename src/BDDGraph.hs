@@ -3,14 +3,11 @@ module BDDGraph where
 
 import BDDGraphCommon
 import Text.Dot
-import Debug.Trace
+--import Debug.Trace
 import Data.Graph.Inductive
-import Data.Graph.Inductive.Dot
 import Control.Monad.State
 import Data.Ord
 import Data.List
-import Data.Maybe
-import qualified Data.IntMap as M
 import Graph
 import Util
 
@@ -39,7 +36,7 @@ reserveNodes ns =
 
 initialBDD :: Node -> T -> T
 initialBDD n g = ctx & g'
-  where (Just (_, _, v, _), g') = match n g
+  where (Just (_, _, _, _), g') = match n g
         ctx = ([], n, V n True, [(True, 1), (False, 0)])
 
  {-
@@ -60,8 +57,8 @@ newNode :: T -> Node
 newNode = head . newNodes 1
 
 dupNode :: Maybe Node -> Node -> T -> (Node, T)
-dupNode repr orig g =
-  case repr of
+dupNode repr_ orig g =
+  case repr_ of
     Nothing -> (z, g1)
     Just x -> (x, insNode (x, V v0 True) g)
  where
@@ -78,8 +75,8 @@ getSons g n = case out g n of
 
 
 newParent :: Maybe Node -> Node -> (Node, Node) -> T -> (BDD, T)
-newParent repr orig (l, r) g = (B n', g'')
-  where (n', g') = dupNode repr orig g
+newParent repr_ orig (l, r) g = (B n', g'')
+  where (n', g') = dupNode repr_ orig g
         g'' = insEdges [(n', l, False), (n', r, True)] g'
 
 -- | Exported function
@@ -118,8 +115,9 @@ layers t = map (map fst) .
       labNodes $ t
 
 sortAndGroupBy p = groupBy (equating p) . sortBy (comparing p)
-  where equating p x y = (p x) == (p y)
+  where equating p_ x y = (p_ x) == (p_ y)
 
+groupWithSons :: T -> [Node] -> [[Node]]
 groupWithSons g = map (map fst) . sortAndGroupBy snd . map (\n -> (n, getSons g n)) . filter (flip gelem g)
 
 moveParents' :: (Node, Node) -> T -> T
@@ -159,5 +157,5 @@ checkReduce2 t (n1, n2) =
 
 regroup :: [Node] -> [(Node, Node)]
 regroup [] = []
-regroup [x] = []
+regroup [_] = []
 regroup (x:xs) = zip (repeat x) xs

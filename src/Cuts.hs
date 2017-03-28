@@ -2,24 +2,17 @@ module Cuts where
 
 import Verilog
 import Data.Graph.Inductive
-import Data.Graph.Inductive.Basic
-import Data.Graph.Inductive.Query.DFS
 import BDDGraphMonad
 import BDDGraphCommon
 import Kuelmann97
 import Graph
-import Control.Monad.State
-import Control.Monad.Writer
-import Control.Monad.Loops
-import Data.List
 import Debug.Trace
 import qualified Data.IntMap as I
 import qualified Data.Set as S
-import Data.Maybe
 
 
 whileTodoM :: Monad m => (m Bool) -> (a -> m b) -> [a] -> m [b]
-whileTodoM test action [] = return []
+whileTodoM _ _ [] = return []
 whileTodoM test action (t:ts) = do
   x <- test
   if x then do r <- action t
@@ -42,24 +35,24 @@ equivLimited g = (g', [])
         whileTodoM stopTest kuelmannNode todo
 
 cutLevelsGraph :: G -> [Node] -> I.IntMap Node
-cutLevelsGraph g cuts = foldr doNode I.empty (mybfs g)
+cutLevelsGraph g cuts_ = foldr doNode I.empty (mybfs g)
   where
-    s = S.fromList cuts
-    level m n = maybe 0 id (I.lookup n m)
-    cutLevel n m = foldr max 0 (map (level m) (pre g n))
-    cutLevel' n m
-      | S.member n s = cutLevel n m + 1
-      | otherwise = cutLevel n m
+    s = S.fromList cuts_
+    level_ m n = maybe 0 id (I.lookup n m)
+    cutLevel n m = foldr max 0 (map (level_ m) (pre g n))
+    --cutLevel' n m
+    --  | S.member n s = cutLevel n m + 1
+    --  | otherwise = cutLevel n m
     doNode n m = I.insert n (cutLevel n m + (if S.member n s then 1 else 0)) m
 
 
 
 cutGraph :: [Node] -> G -> G
-cutGraph is g = sg --gmap changeInput sg
+cutGraph _ g = sg --gmap changeInput sg
   where
     os = getOutputs g
-    rem = dfs os (grev g)
-    sg = subgraph rem g
+    rem_ = dfs os (grev g)
+    sg = subgraph rem_ g
 
 retryEquivLimited :: G -> Bool
 retryEquivLimited g  =

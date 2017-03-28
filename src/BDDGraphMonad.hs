@@ -5,15 +5,9 @@ import GraphMonad
 import BDDGraph
 import BDDGraphCommon
 
-import Control.Monad.Writer
 import Data.Graph.Inductive
 import Control.Monad.State.Strict
-import Data.Ord
-import Data.List
-import Debug.Trace
-import Data.Maybe
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.Maybe
+--import Debug.Trace
 import qualified Data.IntMap as I
 
 data Op = Op Node Node
@@ -38,7 +32,7 @@ equate n1 n2 = --trace ("Equating " ++ show (n1, n2)) $
 genOrdering :: G -> BDDOrdering
 genOrdering g = f
   where values = mybfs g
-        m = I.fromList $ zip values [1..]
+        m = I.fromList $ zip values [(1::Int)..]
         f n1 n2 =
             let Just o1 = I.lookup n1 m
                 Just o2 = I.lookup n2 m
@@ -48,14 +42,14 @@ genOrdering g = f
 calcBDDNode :: Node -> KS ()
 calcBDDNode n = do
   g <- getG
-  if indeg g n == 0
-     then case n of
-            0 -> return $ B 0
-            1 -> return $ B 1
-            _ -> initialBDD_M n
+  _ <- if indeg g n == 0
+         then case n of
+                0 -> return $ B 0
+                1 -> return $ B 1
+                _ -> initialBDD_M n
 
-     else do is <- mapM getBDDfromEdge (inn g n)
-             bddAndMany (Just n) is
+         else do is <- mapM getBDDfromEdge (inn g n)
+                 bddAndMany (Just n) is
   return ()
 
 getCount :: KS Int
@@ -78,13 +72,13 @@ withBDD t op =
 runKS :: G -> (KS a) -> (T, G, a)
 runKS g op = r'
   where
-    order = genOrdering g
+    order_ = genOrdering g
     initialT = reserveNodes (nodes g) startingT
-    r' = flip evalState (S initialT order 0 g [] []) $ do
+    r' = flip evalState (S initialT order_ 0 g [] []) $ do
       r <- op
       t <- getT
-      g <- getG
-      return (t, g, r)
+      g_ <- getG
+      return (t, g_, r)
 
 getT :: KS T
 getT =  bdd <$> get
@@ -95,7 +89,7 @@ modifyT f = do
   put $ s { bdd = f (bdd s) }
 
 bddAndMany :: Maybe Node -> [BDD] -> KS BDD
-bddAndMany n [] = error $ "cannot conjoin nothing"
+bddAndMany _ [] = error $ "cannot conjoin nothing"
 bddAndMany n [B b] = bddAnd n (B b) (B 1)
 bddAndMany n [a, b] = bddAnd n a b
 bddAndMany n (a:os) = do
@@ -112,9 +106,9 @@ getOrdering n1 n2 = do
   return $ n1 `m` n2
 
 newParentM :: Maybe Node -> Node -> (Node, Node) -> KS BDD
-newParentM repr orig (l, r) = do
+newParentM repr_ orig (l, r) = do
   g <- getT
-  let (bdd', g') = newParent repr orig (l,r) g
+  let (bdd', g') = newParent repr_ orig (l,r) g
   modifyT $ const g'
   return bdd'
 
@@ -136,10 +130,10 @@ bddAnd (Just x) (B 1) (B b) = do
   --return $ B (min x b)
   newParentM (Just x) b (b, b)
 
-bddAnd repr _ (B 0) = bddAnd repr (B 0) undefined
-bddAnd repr b (B 1) = bddAnd repr (B 1) b
+bddAnd repr_ _ (B 0) = bddAnd repr_ (B 0) undefined
+bddAnd repr_ b (B 1) = bddAnd repr_ (B 1) b
 
-bddAnd repr (B n1) (B n2) = do
+bddAnd repr_ (B n1) (B n2) = do
   v_n1 <- inputNode n1 <$> getT
   v_n2 <- inputNode n2 <$> getT
   (z1, o1) <- flip getSons n1 <$> getT
@@ -151,15 +145,15 @@ bddAnd repr (B n1) (B n2) = do
     GT -> do
       B z <- bddAnd Nothing (B z1) (B n2)
       B o <- bddAnd Nothing (B o1) (B n2)
-      newParentM repr n1 (z, o)
+      newParentM repr_ n1 (z, o)
     LT -> do
       B z <- bddAnd Nothing (B z2) (B n1)
       B o <- bddAnd Nothing (B o2) (B n1)
-      newParentM repr n2 (z, o)
+      newParentM repr_ n2 (z, o)
     EQ -> do
       B z <- bddAnd Nothing (B z1) (B z2)
       B o <- bddAnd Nothing (B o1) (B o2)
-      newParentM repr n1 (z, o)
+      newParentM repr_ n1 (z, o)
 
 setSons n z o =
   modifyT $ insEdges [(n, z, False), (n, o, True)]
@@ -186,6 +180,7 @@ reduceLayer ls = do
   t0 <- getT
   --let (te, eqs1) = foldl' (flip reduce1') (t0, []) ls
   let (te, eqs1) = foldr reduce1' (t0, []) ls
+  modifyT $ const te
   eqs2 <- reduce2Layer ls
   --modifyT $ \t' -> foldl' (flip moveParents') t' eqs2
   modifyT $ \t' -> foldr moveParents' t' eqs2

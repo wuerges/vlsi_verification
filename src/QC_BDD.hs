@@ -2,7 +2,6 @@
 module QC_BDD (runTests) where
 
 import Test.QuickCheck
-import Test.QuickCheck.Gen
 import Data.Graph.Inductive
 
 import BDDGraph
@@ -44,7 +43,7 @@ newtype I_BDD = I_BDD T
 
 instance Arbitrary I_BDD where
   arbitrary = do S_BDD x <- arbitrary
-                 is <- sublistOf $ [n | n <- nodes x, n > 1]
+                 --is <- sublistOf $ [n | n <- nodes x, n > 1]
                  return $ I_BDD x
   shrink  _ = []
 
@@ -54,7 +53,7 @@ newtype G_BDD = G_BDD T
   deriving Show
 
 
-bddAndMany' repr sons g = withBDD g (bddAndMany repr sons)
+bddAndMany' repr_ sons g = withBDD g (bddAndMany repr_ sons)
 
 
 
@@ -102,9 +101,9 @@ prop_input_sons (I_BDD g) = all f ns
 
   where ns = nodes g
         f n = case context g n of
-                (is, 0, V v b, os) -> os == [] && v == (-1) &&  b
-                (is, 1, V v b, os) -> os == [] && v == (-1) &&  b
-                (is, n, V v b, os) ->
+                (_, 0, V v b, os) -> os == [] && v == (-1) &&  b
+                (_, 1, V v b, os) -> os == [] && v == (-1) &&  b
+                (_, _, V v _, os) ->
                   (v == (-2) && length os == 0) || (length os == 2)
 
 
@@ -116,7 +115,7 @@ propManual_reduced_bdd (R_BDD g) = prop_input_sons (I_BDD g)
 
 return []
 runTests = do
-  $quickCheckAll
+  _ <- $quickCheckAll
   quickCheckWith stdArgs { maxSuccess = 1 } propManual_input_sons2
   quickCheckWith stdArgs { maxSuccess = 1 } propManual_reduced_bdd
 

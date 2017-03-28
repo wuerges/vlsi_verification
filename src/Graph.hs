@@ -7,15 +7,15 @@ import Control.Monad.State
 import Index
 import Verilog
 import Data.Graph.Inductive
-import Data.Graph.Inductive.Query.DFS
-import Data.Graph.Inductive.Query.BFS
+--import Data.Graph.Inductive.Query.DFS
+--import Data.Graph.Inductive.Query.BFS
 import Data.Graph.Inductive.Dot
-import Data.Graph.Inductive.NodeMap
+--import Data.Graph.Inductive.NodeMap
 import Data.List
 import Util
-import Control.Arrow
-import Debug.Trace
-import System.Random
+--import Control.Arrow
+--import Debug.Trace
+--import System.Random
 import qualified Data.Map as M
 import qualified Data.Set as S
 import System.Process
@@ -34,12 +34,12 @@ type GState a = StateT G IdxState a
 dotty s =
   withCreateProcess (proc "dot" ["-Tx11"])
     { std_in = CreatePipe }
-    (\ (Just i) b d p -> do hPutStr i $ s
+    (\ (Just i) _ _ p -> do hPutStr i $ s
                             hClose i
                             waitForProcess p)
 
 -- | Converts a graph to a GraphViz format
-showGraph g = showDot $ fglToDot $ gmap (\(is, n, v, os) -> (is, n, n, os)) g
+showGraph g = showDot $ fglToDot $ gmap (\(is, n, _, os) -> (is, n, n, os)) g
 
 dottyGraph g = dotty (showGraph g)
 
@@ -76,7 +76,7 @@ initGraph v = do
 
 -- | Embeds a Function in the graph.
 embedF :: Function -> GState ()
-embedF f@(Fun op os is) =
+embedF (Fun op os is) =
   --trace ("Embedding function" ++ show f) $
     case op of
       And  -> embedAnd is o
@@ -168,6 +168,8 @@ embedXor iws ow = do
   embedXor' is o
 
 embedXor' :: [Node] -> Node -> GState ()
+embedXor' [] _ = error "Empty Xor"
+embedXor' [_] _ = error "Xor with only one parameter"
 embedXor' [i1, i2] o = do
   n1 <- newWire
   n2 <- newWire
@@ -223,7 +225,7 @@ makeGraphV1 v = do
   wires <- mapM getWire (map Wire $ _inputs v)
   mapM_ (addEdge True) $ zip inputs wires
 
-  mapM embedF $ reverse $ _functions v
+  mapM_ embedF $ reverse $ _functions v
 
   wire_outs <- mapM getWire (map Wire $ _outputs v)
   outs <- mapM getWire (map Output $ _outputs v)
@@ -256,10 +258,10 @@ getOutputs g = filter (isOutput g) $ nodes g
 --
 
 renumberGraph :: Int -> G -> G
-renumberGraph offset g = mkGraph ns es
+renumberGraph offset_ g = mkGraph ns es
   where
-    ns = map (rnLabNode offset) (labNodes g)
-    es = map (rnLabEdge offset) (labEdges g)
+    ns = map (rnLabNode offset_) (labNodes g)
+    es = map (rnLabEdge offset_) (labEdges g)
 
 rnLabEdge off (a, b, l) =
   ( rnNode off a

@@ -1,16 +1,15 @@
 module Equivalence where
 
-import Graph
-import Data.Graph.Inductive
-import BDD
+--import Graph
+--import Data.Graph.Inductive
 import Verilog
-import qualified Data.Set as S
-import Control.Arrow
+--import qualified Data.Set as S
+--import Control.Arrow
 
-import Data.Maybe
-import Debug.Trace
+--import Data.Maybe
+--import Debug.Trace
 
-import qualified Data.Map as M
+--import qualified Data.Map as M
 
 
 -- | Type required for the checker functions

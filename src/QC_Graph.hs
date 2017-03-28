@@ -2,10 +2,9 @@
 module QC_Graph  where
 
 import Test.QuickCheck
-import Test.QuickCheck.Gen
 import Data.Graph.Inductive
-import Data.Graph.Inductive.Arbitrary
-import Debug.Trace
+import Data.Graph.Inductive.Arbitrary()
+--import Debug.Trace
 
 import BDDGraphCommon
 import Graph

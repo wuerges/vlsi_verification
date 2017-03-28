@@ -2,7 +2,7 @@ module Index (IdxState, newIdx, resetIdx, getIdx, getIdxs, runIdx) where
 
 import Verilog
 import Data.Map
-import Control.Monad
+-- import Control.Monad
 import Control.Monad.State
 
 data V = V { idx :: Map Val Int
@@ -49,6 +49,7 @@ getIdx w = do
     Nothing -> do put $ V (insert w c m) o (c+1) i
                   return c
 
+ {-
 getOldIdx :: Val -> IdxState Int
 getOldIdx w = do
   V m o c i <- get
@@ -56,6 +57,7 @@ getOldIdx w = do
     Just r -> return r
     Nothing -> do put $ V m o (c+1) i
                   return c
+  -}
 
 
 getIdxs :: [Val] -> IdxState [Int]
@@ -63,4 +65,4 @@ getIdxs = mapM getIdx
 
 runIdx :: IdxState a -> (a, Map Val Int, Map Val Int, Map String Int)
 runIdx ops = (x, m, o, i)
-  where (x, V m o c i) = flip runState startIdx ops
+  where (x, V m o _ i) = flip runState startIdx ops

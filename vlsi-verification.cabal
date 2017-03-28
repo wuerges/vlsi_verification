@@ -23,8 +23,6 @@ library
                      , Graph      
                      , GraphMonad
                      , BDDGraphCommon
-                     , Algo       
-                     , BDD        
                      , BDDGraph
                      , BDDGraphMonad
                      , Index

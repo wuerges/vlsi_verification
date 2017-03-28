@@ -2,15 +2,17 @@ module VerParser where
 
 import Text.ParserCombinators.Parsec
 import Verilog
+import Data.Functor.Identity
 
 import qualified Text.Parsec.Token as P
 import Text.Parsec.Language (javaStyle)
 
-
+verilog :: P.GenLanguageDef String u Data.Functor.Identity.Identity
 verilog = javaStyle { P.reservedNames = ["endmodule", "module", "input", "output", "wire"] }
 
 -- Lexer
 lexer       = P.makeTokenParser verilog
+
 whiteSpace  = P.whiteSpace lexer
 parens      = P.parens lexer
 braces      = P.braces lexer
@@ -35,7 +37,7 @@ makeVerilog :: [CompExpr] -> Verilog
 makeVerilog = foldl addVerilog emptyVerilog
 
 addVerilog :: Verilog -> CompExpr -> Verilog
-addVerilog v (WireExpr ws)      = v
+addVerilog v (WireExpr _)      = v
 addVerilog v (InputExpr ws)     = v { _inputs    = _inputs v ++ ws }
 addVerilog v (OutputExpr ws)    = v { _outputs   = _outputs v ++ ws }
 addVerilog v (FunctionExpr f)   = v { _functions = f:_functions v }
@@ -102,7 +104,7 @@ endModuleExpr = do reserved "endmodule"
                    return ()
 
 topModule :: GenParser Char st Verilog
-topModule = do (name, ports) <- moduleExpr
+topModule = do (_, _) <- moduleExpr
                es <- many verilogExpr
                endModuleExpr
                eof

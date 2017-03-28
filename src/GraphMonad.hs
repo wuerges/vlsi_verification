@@ -4,17 +4,8 @@ module GraphMonad where
 import BDDGraphCommon
 import Graph
 import Control.Monad.State
-import Control.Monad.Writer
-import Data.Maybe
-
-import Data.List hiding (union)
 import Data.Graph.Inductive
-import Debug.Trace
-import qualified Data.Map as M
-import qualified Data.IntMap as I
-
-import qualified Data.Set as S
-import Text.Printf
+--import Debug.Trace
 
 modifyG :: (G -> G) -> KS ()
 modifyG f = modify $ \s -> s { graph = f (graph s) }

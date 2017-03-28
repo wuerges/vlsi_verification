@@ -1,6 +1,6 @@
 module Util where
 
-import Data.List
+--import Data.List
 import qualified Data.Set as S
 
 rmdups :: (Ord a, Eq a) => [a] -> [a]

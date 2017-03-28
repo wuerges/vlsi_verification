@@ -1,7 +1,7 @@
 import Lib
 import System.Environment
-import Data.Either
-import Text.Printf
+--import Data.Either
+--import Text.Printf
 
 main :: IO ()
 main = do

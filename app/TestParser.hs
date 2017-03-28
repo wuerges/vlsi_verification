@@ -1,16 +1,13 @@
 import Lib
 
-import Graph
 import System.Environment
-import System.IO
-import Control.Monad
 import Data.Either
 
 
 
 main :: IO ()
 main = do --f <- getContents
-          fs@[f1, f2] <- getArgs
+          fs@[_, _] <- getArgs
           ps <- mapM parseVerilog fs
           case rights ps of
             [r1, r2]  -> do --print "ok"
@@ -24,4 +21,4 @@ main = do --f <- getContents
                               g1 = makeGraphV [r1]
                               g2 = makeGraphV [r2]
                               gu = makeGraphV [r1, r2]
-            [] -> error $ show (lefts ps)
+            x -> error $ show (x,lefts ps)

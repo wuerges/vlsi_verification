@@ -2,10 +2,6 @@
 
 module Verilog where
 
-import qualified Data.Map as M
-import Data.Maybe
-import Control.Monad.State
-
 
 data Val = Input String
          | Output String
@@ -47,6 +43,7 @@ data Verilog = Verilog { _inputs :: [String]
 --names :: Verilog -> [String]
 --names v = _inputs v ++ _outputs v ++ concatMap namesFun (_functions v)
 
+emptyVerilog :: Verilog
 emptyVerilog = Verilog { _inputs = []
                        , _outputs = []
                        , _functions = [] }

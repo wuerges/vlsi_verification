@@ -2,23 +2,15 @@
 module Kuelmann97 where
 
 import Verilog
-import Equivalence
+--import Equivalence
 import Graph
-import GraphMonad
-import BDDGraph
 import BDDGraphMonad
 import BDDGraphCommon
 
 import Control.Monad.State
-import Control.Monad.Writer
-import Data.Maybe
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.Maybe
 import Data.List hiding (union)
 import Data.Graph.Inductive
 import Debug.Trace
-import qualified Data.Map as M
-import qualified Data.IntMap as I
 
 import qualified Data.Set as S
 import Text.Printf
@@ -79,7 +71,7 @@ checkEquivRed g1 g2 gu =
 
 
 getPreds :: G -> Node -> (Node, [(Node, Bool)])
-getPreds g y = (y, sort $ [(o, v) | (o, d, v) <- inn g y])
+getPreds g y = (y, sort $ [(o, v) | (o, _, v) <- inn g y])
 
 checkResult :: G -> Bool
 checkResult g = r
