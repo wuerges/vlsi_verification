@@ -44,6 +44,8 @@ extra-deps:
 - monad-memo-0.4.1
 - dotgen-0.4.2
 - fgl-visualize-0.1.0.1
+- equivalence-0.3.2
+- STMonadTrans-0.4.3
 
 # Override default flag values for local packages and extra-deps
 flags: {}

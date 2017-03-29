@@ -25,12 +25,14 @@ library
                      , BDDGraphCommon
                      , BDDGraph
                      , BDDGraphMonad
+                     , BDDMinimizer
                      , Index
                      , Cuts
                      , Util
                      , QC_BDD
                      , QC_Graph
                      , QC_Cuts
+                     , UnionFind
 
   build-depends:       base
                      , parallel
