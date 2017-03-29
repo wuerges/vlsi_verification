@@ -32,7 +32,6 @@ library
                      , QC_BDD
                      , QC_Graph
                      , QC_Cuts
-                     , UnionFind
 
   build-depends:       base
                      , parallel
@@ -51,6 +50,7 @@ library
                      , fgl-arbitrary
                      , QuickCheck
                      , process
+                     , equivalence
   default-language:    Haskell2010
 
 

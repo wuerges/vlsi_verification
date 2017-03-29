@@ -2,10 +2,7 @@
 
 module BDDMinimizer where
 
-import Control.Monad.State.Strict
-
-import qualified UnionFind as U
-import qualified Data.IntMap as IM
+import Data.Equivalence.Monad
 import Data.Graph.Inductive
 import Graph
 import BDDGraphCommon
@@ -13,21 +10,9 @@ import BDDGraph
 import BDDGraphMonad
 
 
-type Pt = U.Point Node
+type MinT = EquivT s c v KS
 
-data MS = MS { supply :: U.PointSupply Int
-             , ptMap  :: IM.IntMap Pt }
-
-type MinT = StateT MS KS
-
-fresh :: Node -> MinT Pt
-fresh n = do
-  s <- get
-  case IM.lookup n (ptMap s) of
-    Just x -> return x
-    Nothing -> let (ps', p') = U.fresh (supply s) n
-                in do put $ MS ps' (IM.insert n p' (ptMap s))
-                      return p'
+runMinT op = runEquivM (\v -> v) min op
 
 leader :: Node -> MinT Pt
 leader n = do
