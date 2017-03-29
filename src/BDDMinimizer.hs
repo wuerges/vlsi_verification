@@ -2,7 +2,9 @@
 
 module BDDMinimizer where
 
-import Data.Equivalence.Monad
+import Control.Monad
+import Control.Monad.Trans
+import Data.Equivalence.Monad as E
 import Data.Graph.Inductive
 import Graph
 import BDDGraphCommon
@@ -10,58 +12,47 @@ import BDDGraph
 import BDDGraphMonad
 
 
-type MinT = EquivT s c v KS
+newtype D = D Int deriving (Eq, Ord)
 
-runMinT op = runEquivM (\v -> v) min op
+minD :: D -> D -> D
+minD (D a) (D b) = D $ min a b
 
-leader :: Node -> MinT Pt
-leader n = do
-  f <- fresh n
-  s <- get
-  return $ U.repr (supply s) f
+type MinT s = EquivT s D Node KS
 
-equivalent :: Node -> Node -> MinT Bool
-equivalent n1 n2 = do
-  p1 <- fresh n1
-  p2 <- fresh n2
-  s <- get
-  return $ U.equivalent (supply s) p1 p2
 
-union :: (Node, Node) -> MinT ()
-union (n1, n2) = do
-  p1 <- fresh n1
-  p2 <- fresh n2
-  s <- get
-  let ps' = U.union (supply s) p1 p2
-  put $ s { supply = ps' }
+runMinT :: MinT s a -> KS a
+runMinT op = runEquivT (\n -> D n) minD op
+
+leader :: Node -> MinT s D
+leader n = classDesc n
 
 minimize :: T -> (T, [(Node, Node)])
 minimize = undefined
 
-minimizeLayer :: [Node] -> MinT ()
+minimizeLayer :: [Node] -> MinT s ()
 minimizeLayer ns = do
   mapM_ minimizeLayer1 ns
 
-minimizeLayer1 :: Node -> MinT ()
+minimizeLayer1 :: Node -> MinT s ()
 minimizeLayer1 n = do
   t <- lift getT
   let (z, o) = getSons t n
   when (gelem n t && outdeg t n > 0) $ do
     e <- equivalent z o
-    when e $ union (n, z)
+    when e $ E.equate n z
 
 
-getEqSons :: Node -> MinT (Node, (Pt, Pt))
+getEqSons :: Node -> MinT s (Node, (D, D))
 getEqSons n = do
   (z, o) <- lift $ flip getSons n <$> getT
   zc <- leader z
   oc <- leader o
   return (n, (zc, oc))
 
-minimizeLayer2 :: [Node] -> MinT ()
+minimizeLayer2 :: [Node] -> MinT s ()
 minimizeLayer2 ns = do
   t <- lift getT
   let ns' = filter (flip gelem t) ns
   ns'' <- mapM getEqSons ns'
-  let gs' = concatMap regroup $ map (map fst) (sortAndGroupBy snd ns'')
-  mapM_ union gs'
+  let gs' = map (map fst) (sortAndGroupBy snd ns'')
+  mapM_ equateAll gs'
