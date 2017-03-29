@@ -136,8 +136,10 @@ moveParents top bot t =
     (Just (is_bot, _, V inp r_bot, os_bot), t'') = match bot t'
     node_keep = min top bot
     r_keep = r_top || r_bot
-    es = rmdups [(a, node_keep, c) | (c,a) <- is_top ++ is_bot]
-    sucs = rmdups [(node_keep, b, c) | (c,b) <- os_bot]
+    --es = rmdups [(a, node_keep, c) | (c,a) <- is_top ++ is_bot]
+    --sucs = rmdups [(node_keep, b, c) | (c,b) <- os_bot]
+    es = [(a, node_keep, c) | (c,a) <- is_top ++ is_bot]
+    sucs = [(node_keep, b, c) | (c,b) <- os_bot]
 
  {-
 checkReduce1 :: Node -> T -> Maybe (Node, Node)

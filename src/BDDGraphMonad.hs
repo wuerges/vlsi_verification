@@ -181,6 +181,7 @@ reduceLayer ls = do
   --let (te, eqs1) = foldl' (flip reduce1') (t0, []) ls
   let (te, eqs1) = foldr reduce1' (t0, []) ls
   modifyT $ const te
+
   eqs2 <- reduce2Layer ls
   --modifyT $ \t' -> foldl' (flip moveParents') t' eqs2
   modifyT $ \t' -> foldr moveParents' t' eqs2
