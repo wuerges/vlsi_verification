@@ -4,6 +4,7 @@ import Graph
 import GraphMonad
 import BDDGraph
 import BDDGraphCommon
+import BDDMinimizer
 
 import Data.Graph.Inductive
 import Control.Monad.State.Strict
@@ -199,9 +200,12 @@ reduce2Layer ls = do
 
 reduceAll :: KS ()
 reduceAll = do
-  g <- getT
-  eqs <- mapM reduceLayer $! (reverse $ layers g)
-  modifyG $ \g' -> foldr mergeNodes' g' (concat eqs)
+  t <- getT
+  eqs <- mapM reduceLayer $! (reverse $ layers t)
+  let eqs' = concat eqs
+  --let (t', eqs') = runMinimize t
+  --modifyT $ const t'
+  modifyG $ \g' -> foldr mergeNodes' g' eqs'
 
 
 -- Monadic functions show be bellow here

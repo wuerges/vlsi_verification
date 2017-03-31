@@ -9,7 +9,8 @@ import Data.Graph.Inductive
 import Graph
 import BDDGraphCommon
 import BDDGraph
-import BDDGraphMonad
+import Util
+--import BDDGraphMonad
 
 
 newtype D = D Int deriving (Eq, Ord)
@@ -22,11 +23,46 @@ type Min s = EquivM s D Node
 leader :: Node -> Min s D
 leader n = classDesc n
 
+
+isLeader :: Node -> Min s Bool
+isLeader n = do
+  D x <- leader n
+  return $ x == n
+
+checkNode (a, _) = isLeader a
+checkEdge (a, _, _) = isLeader a
+
+remapEdge (a, b, l) = do
+  D a' <- leader a
+  D b' <- leader b
+  return (a', b', l)
+
+
+minimizeT :: T -> Min s T
+minimizeT t =
+  let ns = labNodes t
+      es = labEdges t
+   in do ns' <- filterM checkNode ns
+         es' <- filterM checkEdge es
+         es'' <- mapM remapEdge es'
+         return $ mkGraph ns' (rmdups es'')
+
+getEquiv n = do
+  D x <- leader n
+  return (x, n)
+
+runMinimize :: T -> (T, [(Node, Node)])
+runMinimize t = runEquivM D minD (minimize t)
+
 minimize :: T -> Min s (T, [(Node, Node)])
 minimize t =
   let ls = layers t
    in do mapM_ (minimizeLayer1 t >> minimizeLayer2 t) ls
-         return (t, [])
+         t' <- minimizeT t
+         ns' <- filterM (\n -> isLeader n >>= return . not) (nodes t)
+         --ns' <- filterM (\n -> do { x <- isLeader n; return $ not x}) (nodes t)
+         eqs <- mapM getEquiv ns'
+         return (t', rmdups eqs)
 
 
 minimizeLayer1 :: T -> [Node] -> Min s ()
@@ -54,4 +90,5 @@ minimizeLayer2 t ns =
    in do ns'' <- mapM (getEqSons t) ns'
          let gs' = map (map fst) (sortAndGroupBy snd ns'')
          mapM_ equateAll gs'
+
 
