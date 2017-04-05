@@ -90,8 +90,8 @@ prop_join_graphs (TG g) =
   where gu = joinGraphs g g
         g' = (fixSingleNodes g)
 
-prop_self_equiv :: TestGraph -> Bool
-prop_self_equiv (TG g) = r
+propManual_self_equiv :: TestGraph -> Bool
+propManual_self_equiv (TG g) = r
   where gu = joinGraphs g g
         --(r, logs) = equivG gu
         red = reduceG gu
@@ -99,4 +99,5 @@ prop_self_equiv (TG g) = r
 
 return []
 runTests = do
+  quickCheckWith stdArgs { maxSuccess = 10000 } propManual_self_equiv
   $quickCheckAll

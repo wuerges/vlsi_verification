@@ -114,10 +114,6 @@ layers t = map (map fst) .
     filter (\(n, _) -> outdeg t n > 0) .
       labNodes $ t
 
-sortAndGroupBy p = groupBy (equating p) . sortBy (comparing p)
-  where equating p_ x y = (p_ x) == (p_ y)
-
-groupWithSons :: T -> [Node] -> [[Node]]
 groupWithSons g = map (map fst) . sortAndGroupBy snd . map (\n -> (n, getSons g n)) . filter (flip gelem g)
 
 moveParents' :: (Node, Node) -> T -> T
