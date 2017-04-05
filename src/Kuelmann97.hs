@@ -4,8 +4,10 @@ module Kuelmann97 where
 import Verilog
 --import Equivalence
 import Graph
+import GraphMonad
 import BDDGraphMonad
 import BDDGraphCommon
+import InputsMerger
 
 import Control.Monad.State
 import Data.List hiding (union)
@@ -22,8 +24,10 @@ cashOut = do
   return es
 
 kuelmannNode :: Node -> KS ()
-kuelmannNode n1 =
-  do
+kuelmannNode n1 = do
+  --modifyG reduceWithInputs
+  g0 <- getG
+  when (gelem n1 g0) $ do
     calcBDDNode n1
     o <- order <$> getG
     c <- getCount
@@ -48,7 +52,9 @@ equivG g = Right $ checkResult (reduceG g)
 reduceGT :: G -> (G, T)
 reduceGT g = (g', t)
   where (t, g', _) = runKS g $ do
-                       mapM_ kuelmannNode (mybfs g)
+                       modifyG reduceWithInputs
+                       g0 <- getG
+                       mapM_ kuelmannNode (mybfs g0)
                        reduceAll
 
 reduceG :: G -> G

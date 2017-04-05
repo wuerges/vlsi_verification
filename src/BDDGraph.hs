@@ -6,7 +6,6 @@ import Text.Dot
 --import Debug.Trace
 import Data.Graph.Inductive
 import Control.Monad.State
-import Data.Ord
 import Data.List
 import Graph
 import Util
@@ -145,7 +144,6 @@ checkReduce1 n t =
      else Nothing
   where (z, o) = getSons t n
   -}
-
 
 checkReduce2 :: T -> (Node, Node) -> Bool
 checkReduce2 t (n1, n2) =
