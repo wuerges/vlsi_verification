@@ -25,7 +25,7 @@ cashOut = do
 
 kuelmannNode :: Node -> KS ()
 kuelmannNode n1 = do
-  --modifyG reduceWithInputs
+  modifyG reduceWithInputs
   g0 <- getG
   when (gelem n1 g0) $ do
     calcBDDNode n1
