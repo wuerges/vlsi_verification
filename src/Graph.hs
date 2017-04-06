@@ -39,7 +39,7 @@ dotty s =
                             waitForProcess p)
 
 -- | Converts a graph to a GraphViz format
-showGraph g = showDot $ fglToDot $ gmap (\(is, n, _, os) -> (is, n, n, os)) g
+showGraph g = showDot $ fglToDot $ gmap (\(is, n, _, os) -> (is, n, show n, os)) g
 
 dottyGraph g = dotty (showGraph g)
 
@@ -252,6 +252,10 @@ isOutput g n = outdeg g n == 0
 getOutputs :: G -> [Node]
 getOutputs g = filter (isOutput g) $ nodes g
 
+
+cleanDupEdges :: G -> G
+cleanDupEdges g =
+  mkGraph (labNodes g) (rmdups $ labEdges g)
 
 
 -- | Silly stuff from here

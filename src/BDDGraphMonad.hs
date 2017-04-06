@@ -10,6 +10,7 @@ import Data.Graph.Inductive
 import Control.Monad.State.Strict
 --import Debug.Trace
 import qualified Data.IntMap as I
+import Util
 
 data Op = Op Node Node
 

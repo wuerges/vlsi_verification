@@ -151,7 +151,9 @@ checkReduce2 t (n1, n2) =
   where (z1, o1) = getSons t n1
         (z2, o2) = getSons t n2
 
+ {-
 regroup :: [Node] -> [(Node, Node)]
 regroup [] = []
 regroup [_] = []
 regroup (x:xs) = zip (repeat x) xs
+  -}

@@ -6,6 +6,7 @@ import Data.Graph.Inductive
 import Data.Graph.Inductive.Arbitrary()
 --import Debug.Trace
 
+import Data.List
 import BDDGraphCommon
 import Graph
 import Kuelmann97
@@ -39,12 +40,12 @@ insZeroAndOne g = g1
                 then g0
                 else insNode (1,"1") g0
 
-cleanDupEdges :: G -> G
-cleanDupEdges g =
-  mkGraph (labNodes g) (rmdups $ labEdges g)
-
 instance Arbitrary TestGraph where
-  shrink _ = []
+  shrink (TG g) = map TG $ map (delNode2 g) ns ++ map (flip delEdge g) es
+    where ns = delete 1 $ delete 0 $ nodes g
+          es = edges g
+          delNode2 g1 n1 = g2
+            where (_, g2) = match n1 g1
   arbitrary =
     do x <- arbitrary
        return $ TG $ cleanDupEdges $

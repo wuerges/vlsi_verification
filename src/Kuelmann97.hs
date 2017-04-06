@@ -25,7 +25,8 @@ cashOut = do
 
 kuelmannNode :: Node -> KS ()
 kuelmannNode n1 = do
-  modifyG reduceWithInputs
+  reduceWithInputs
+  modifyG cleanDupEdges
   g0 <- getG
   when (gelem n1 g0) $ do
     calcBDDNode n1
@@ -52,7 +53,7 @@ equivG g = Right $ checkResult (reduceG g)
 reduceGT :: G -> (G, T)
 reduceGT g = (g', t)
   where (t, g', _) = runKS g $ do
-                       modifyG reduceWithInputs
+                       reduceWithInputs
                        g0 <- getG
                        mapM_ kuelmannNode (mybfs g0)
                        reduceAll
