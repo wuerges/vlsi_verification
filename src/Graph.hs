@@ -39,7 +39,7 @@ dotty s =
                             waitForProcess p)
 
 -- | Converts a graph to a GraphViz format
-showGraph g = showDot $ fglToDot $ gmap (\(is, n, _, os) -> (is, n, show n, os)) g
+showGraph g = showDot $ fglToDot $ gmap (\(is, n, _, os) -> (is, n, n, os)) g
 
 dottyGraph g = dotty (showGraph g)
 
@@ -240,8 +240,18 @@ isInput g n = indeg g n == 0
 getInputs :: G -> [Node]
 getInputs g = filter (isInput g) $ nodes g
 
+
 mybfs :: G -> [Node]
-mybfs = topsort
+mybfs g = bfsn (getInputs g) g
+
+mybfs3 :: G -> [Node]
+--mybfs = reverse . preflatten . bff'
+mybfs3 = reverse . preorderF . dffWith' node'
+
+mybfs2 :: G -> [Node]
+mybfs2 = reverse . postorderF . dffWith' node'
+
+
 --mybfs = sort . nodes
 --mybfs g = bfsn [n | n <- nodes g, indeg g n == 0] g
 
@@ -310,6 +320,10 @@ mergeNodes' (n1, n2) g
   where
     (Just (is1, _, v1, os1), g' ) = match n1 g
     (Just (_  , _, _ , os2), g'') = match n2 g'
-    os' = S.toList $ S.delete (False, n1) $ S.delete (True, n1) $ S.fromList $ os1 ++ os2
-    g''' = (is1, n1, v1, os') & g''
+    os' = S.toList $
+      S.delete (False, n1) $
+        S.delete (True, n1) $
+          S.delete (False, n2) $
+            S.delete (True, n2) $ S.fromList $ os1 ++ os2
+    g''' = (is1, min n1 n2, v1, os') & g''
 

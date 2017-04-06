@@ -123,7 +123,8 @@ moveParents' (a, b) t
 moveParents :: Node -> Node -> T -> T
 moveParents top bot t =
   -- insEdges es $ ([], node_keep, V inp r_keep, os_bot) & t''
-  insEdges sucs $ insEdges es $ ([], node_keep, V inp r_keep, []) & t''
+  --insEdges sucs $ insEdges es $ ([], node_keep, V inp r_keep, []) & t''
+  (is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & t''
   --foldl' (\t e -> insEdge e t) (([], node_keep, V inp r_keep, os_bot) & t'') es
   --(is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & t''
   where

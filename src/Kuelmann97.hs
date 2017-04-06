@@ -53,7 +53,6 @@ equivG g = Right $ checkResult (reduceG g)
 reduceGT :: G -> (G, T)
 reduceGT g = (g', t)
   where (t, g', _) = runKS g $ do
-                       reduceWithInputs
                        g0 <- getG
                        mapM_ kuelmannNode (mybfs g0)
                        reduceAll
