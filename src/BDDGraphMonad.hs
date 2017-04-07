@@ -10,6 +10,8 @@ import Data.Graph.Inductive
 import Control.Monad.State.Strict
 --import Debug.Trace
 import qualified Data.IntMap as I
+import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 import Util
 
 data Op = Op Node Node
@@ -39,7 +41,7 @@ genOrdering g = f
             let Just o1 = I.lookup n1 m
                 Just o2 = I.lookup n2 m
              in --traceShow ("order", n1, n2) $
-               o1 `compare` o2
+               o2 `compare` o1
 
 calcBDDNode :: Node -> KS ()
 calcBDDNode n = do
@@ -69,14 +71,14 @@ getBDDfromEdge (o, _, v) =
 
 withBDD :: T -> (KS a) -> T
 withBDD t op =
-  evalState (op >> getT) $ S t compare 0 (empty :: G) [] []
+  evalState (op >> getT) $ S t compare 0 (empty :: G) M.empty S.empty [] []
 
 runKS :: G -> (KS a) -> (T, G, a)
 runKS g op = r'
   where
     order_ = genOrdering g
     initialT = reserveNodes (nodes g) startingT
-    r' = flip evalState (S initialT order_ 0 g [] []) $ do
+    r' = flip evalState (S initialT order_ 0 g M.empty S.empty [] []) $ do
       r <- op
       t <- getT
       g_ <- getG

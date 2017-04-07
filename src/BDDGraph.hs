@@ -117,14 +117,15 @@ groupWithSons g = map (map fst) . sortAndGroupBy snd . map (\n -> (n, getSons g 
 
 moveParents' :: (Node, Node) -> T -> T
 moveParents' (a, b) t
-  | gelem a t && gelem b t = moveParents a b t
+  | a /= b && gelem a t && gelem b t =
+    moveParents'' (min a b) (max a b) t
   | otherwise = t
 
-moveParents :: Node -> Node -> T -> T
-moveParents top bot t =
+moveParents'' :: Node -> Node -> T -> T
+moveParents'' top bot t =
   -- insEdges es $ ([], node_keep, V inp r_keep, os_bot) & t''
-  --insEdges sucs $ insEdges es $ ([], node_keep, V inp r_keep, []) & t''
-  (is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & t''
+  insEdges sucs $ insEdges es $ ([], node_keep, V inp r_keep, []) & t''
+  --(is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & t''
   --foldl' (\t e -> insEdge e t) (([], node_keep, V inp r_keep, os_bot) & t'') es
   --(is_top ++ is_bot, node_keep, V inp r_keep, os_bot) & t''
   where

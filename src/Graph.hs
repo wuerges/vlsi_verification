@@ -242,7 +242,8 @@ getInputs g = filter (isInput g) $ nodes g
 
 
 mybfs :: G -> [Node]
-mybfs g = bfsn (getInputs g) g
+mybfs = topsort
+--mybfs g = bfsn (getInputs g) g
 
 mybfs3 :: G -> [Node]
 --mybfs = reverse . preflatten . bff'
@@ -314,8 +315,11 @@ joinGraphs g1 g2 =
     es' = [(a, b, True) | (a,b) <- is]
 
 mergeNodes' :: (Node, Node) -> G -> G
-mergeNodes' (n1, n2) g
-  | gelem n1 g && gelem n2 g = g'''
+mergeNodes' (n1, n2) g = mergeNodes'' (min n1 n2, max n1 n2) g
+
+mergeNodes'' :: (Node, Node) -> G -> G
+mergeNodes'' (n1, n2) g
+  | n1 /= n2 && gelem n1 g && gelem n2 g = g'''
   | otherwise = g
   where
     (Just (is1, _, v1, os1), g' ) = match n1 g

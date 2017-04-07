@@ -14,6 +14,7 @@ import Data.List hiding (union)
 import Data.Graph.Inductive
 import Debug.Trace
 
+import           Data.Set(Set)
 import qualified Data.Set as S
 import Text.Printf
 
@@ -23,9 +24,19 @@ cashOut = do
   modify $ \s -> s { equals = [] }
   return es
 
+
+controlVisit :: Node -> KS ()
+controlVisit n = do
+  vs <- visited <$> get
+  unless (S.member n vs) $ do
+    modify $ \s -> s { visited = S.insert n (visited s) }
+    ps <- flip pre n <$> getG
+    mapM_ controlVisit ps
+    kuelmannNode n
+
 kuelmannNode :: Node -> KS ()
 kuelmannNode n1 = do
-  reduceWithInputs
+  equivWithInputs1 n1
   modifyG cleanDupEdges
   g0 <- getG
   when (gelem n1 g0) $ do
@@ -34,10 +45,11 @@ kuelmannNode n1 = do
     c <- getCount
     sz <- getSize
     traceM (printf "Current Node: %5d -- %5d/%5d -- BDD order: %5d -- Graph order: %5d " n1 c o sz o  ++ show (sz > 20000))
-    reduce1 (B n1)
-    --reduceAll
-    when (sz > 20001) $ do
-      reduceAll
+    --reduce1 (B n1)
+    reduceAll
+    reduceWithInputs
+    --when (sz > 20001) $ do
+    --  reduceAll
 
 equivVerilog :: Verilog -> Verilog -> Either String Bool
 equivVerilog v1 v2 = Right $ checkEquivRed g1 g2 red
@@ -53,8 +65,9 @@ equivG g = Right $ checkResult (reduceG g)
 reduceGT :: G -> (G, T)
 reduceGT g = (g', t)
   where (t, g', _) = runKS g $ do
+                       reduceWithInputs
                        g0 <- getG
-                       mapM_ kuelmannNode (mybfs g0)
+                       mapM_ controlVisit (mybfs g0)
                        reduceAll
 
 reduceG :: G -> G
