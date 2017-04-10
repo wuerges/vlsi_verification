@@ -24,7 +24,6 @@ cashOut = do
   modify $ \s -> s { equals = [] }
   return es
 
-
 controlVisit :: Node -> KS ()
 controlVisit n = do
   vs <- visited <$> get
@@ -36,8 +35,9 @@ controlVisit n = do
 
 kuelmannNode :: Node -> KS ()
 kuelmannNode n1 = do
-  equivWithInputs1 n1
-  modifyG cleanDupEdges
+  --g00 <- getG
+  --when (gelem n1 g00) $ equivWithInputs1 n1
+  --modifyG cleanDupEdges
   g0 <- getG
   when (gelem n1 g0) $ do
     calcBDDNode n1
@@ -45,9 +45,9 @@ kuelmannNode n1 = do
     c <- getCount
     sz <- getSize
     traceM (printf "Current Node: %5d -- %5d/%5d -- BDD order: %5d -- Graph order: %5d " n1 c o sz o  ++ show (sz > 20000))
-    --reduce1 (B n1)
+    reduce1 (B n1)
     reduceAll
-    reduceWithInputs
+    --reduceWithInputs
     --when (sz > 20001) $ do
     --  reduceAll
 
@@ -65,9 +65,9 @@ equivG g = Right $ checkResult (reduceG g)
 reduceGT :: G -> (G, T)
 reduceGT g = (g', t)
   where (t, g', _) = runKS g $ do
-                       reduceWithInputs
-                       g0 <- getG
-                       mapM_ controlVisit (mybfs g0)
+                       --reduceWithInputs
+                       --g0 <- getG
+                       mapM_ kuelmannNode (mybfs g)
                        reduceAll
 
 reduceG :: G -> G

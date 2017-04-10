@@ -198,6 +198,8 @@ fixSingleNode :: Int -> G -> G
 fixSingleNode n g =  case match n g of
     (Nothing, _)  -> error "Could not match context in fixSingleNode"
     (Just ctx, g') -> case ctx of
+       --([(True, ni)], _, _, []) ->  g'
+       --([(False, ni)], _, _, []) ->  g
        ([(vi, ni)], _, _, (o:os)) ->
          insEdges [(ni, no, not $ vi /= vo) | (vo, no) <- (o:os)] g'
        _                               -> g

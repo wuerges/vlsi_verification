@@ -38,11 +38,6 @@ initialBDD n g = ctx & g'
   where (Just (_, _, _, _), g') = match n g
         ctx = ([], n, V n True, [(True, 1), (False, 0)])
 
- {-
-initialBDD' :: [Node] -> T -> T
-initialBDD' ns g = foldr initialBDD g ns
-  -}
-
 -- | Exported function
 bddOne = B 1
 -- | Exported function
@@ -138,24 +133,8 @@ moveParents'' top bot t =
     es = [(a, node_keep, c) | (c,a) <- is_top ++ is_bot]
     sucs = [(node_keep, b, c) | (c,b) <- os_bot]
 
- {-
-checkReduce1 :: Node -> T -> Maybe (Node, Node)
-checkReduce1 n t =
-  if gelem n t && outdeg t n > 0 && z == o
-     then Just (n, z)
-     else Nothing
-  where (z, o) = getSons t n
-  -}
-
 checkReduce2 :: T -> (Node, Node) -> Bool
 checkReduce2 t (n1, n2) =
   gelem n1 t && gelem n2 t && z1 == z2 && o1 == o2
   where (z1, o1) = getSons t n1
         (z2, o2) = getSons t n2
-
- {-
-regroup :: [Node] -> [(Node, Node)]
-regroup [] = []
-regroup [_] = []
-regroup (x:xs) = zip (repeat x) xs
-  -}

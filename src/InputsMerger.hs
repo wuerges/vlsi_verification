@@ -34,7 +34,7 @@ equivWithInputs1 n = do
       Just x  -> do
         modify $ \s -> s { inputMap = M.insert ps (min n x) m }
         modifyG $ mergeNodes' (n, x)
-        modifyT $ moveParents' (n, x)
+        --modifyT $ moveParents' (n, x)
 
 
 equivWithInputs :: G -> [(Node, Node)]
